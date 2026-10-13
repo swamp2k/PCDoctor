@@ -1,0 +1,41 @@
+---- Minecraft Crash Report ----
+// Shall we play a game?
+
+Time: 2026-10-13 20:58:12
+Description: Ticking entity
+
+java.lang.NullPointerException: Cannot invoke "net.minecraft.world.entity.Entity.getId()" because "target" is null
+	at com.example.betterpets.PetFollowGoal.tick(PetFollowGoal.java:88) ~[betterpets-1.4.2.jar%23142!/:1.4.2] {re:classloading}
+	at net.minecraft.world.entity.ai.goal.WrappedGoal.tick(WrappedGoal.java:65) ~[client-1.20.1-20230612.114412-srg.jar%23300!/:?] {re:classloading}
+	at net.minecraft.world.entity.ai.goal.GoalSelector.tickRunningGoals(GoalSelector.java:120) ~[client-1.20.1-20230612.114412-srg.jar%23300!/:?] {re:classloading}
+	at net.minecraft.world.entity.Mob.serverAiStep(Mob.java:762) ~[client-1.20.1-20230612.114412-srg.jar%23300!/:?] {re:computing_frames,re:mixin,re:classloading}
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- Head --
+Thread: Server thread
+Suspected Mod: 
+	Better Pets (betterpets), Version: 1.4.2
+		Issue tracker URL: https://example.com/betterpets/issues
+		at TRANSFORMER/betterpets@1.4.2/com.example.betterpets.PetFollowGoal.tick(PetFollowGoal.java:88)
+Stacktrace:
+	at com.example.betterpets.PetFollowGoal.tick(PetFollowGoal.java:88) ~[betterpets-1.4.2.jar%23142!/:1.4.2] {re:classloading}
+
+-- System Details --
+Details:
+	Minecraft Version: 1.20.1
+	Minecraft Version ID: 1.20.1
+	Operating System: Windows 11 (amd64) version 10.0
+	Java Version: 17.0.8, Microsoft
+	Memory: 1032847360 bytes (985 MiB) / 4294967296 bytes (4096 MiB) up to 4294967296 bytes (4096 MiB)
+	JVM Flags: 2 total; -Xmx4096m -Xms256m
+	Graphics card #0 name: NVIDIA GeForce GTX 1060 6GB
+	ModLauncher: 10.0.9+10.0.9+main.dcd20f30
+	Mod List: 
+		betterpets-1.4.2.jar                              |Better Pets                   |betterpets                    |1.4.2               |DONE      |Manifest: NOSIGNATURE
+		forge-1.20.1-47.2.0-universal.jar                 |Forge                         |forge                         |47.2.0              |DONE      |Manifest: NOSIGNATURE
+	Crash Report UUID: 6f1c2a9e-0000-4000-8000-000000000000
+	FML: 47.2
+	Forge: net.minecraftforge:47.2.0

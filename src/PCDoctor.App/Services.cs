@@ -13,10 +13,14 @@ static class Services
         var tools = new List<ITool>();
         if (OperatingSystem.IsWindows())
             tools.Add(new HardwareTool());
+        tools.Add(new ResourcesTool(CreatePerfSampler));
         tools.Add(new ProcessesTool());
+        if (OperatingSystem.IsWindows())
+            tools.Add(new EventLogTool());
         tools.Add(new PingTool());
         tools.Add(new DnsTool());
         tools.Add(new TcpTool());
+        tools.Add(new GamingLogsTool());
         tools.Add(new PerformanceRecordingTool(new PerfRecordingStore()));
         if (OperatingSystem.IsWindows())
             tools.Add(new PowerShellTool(settings));

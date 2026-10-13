@@ -13,6 +13,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\PCDoctor.Core\PCDoctor.Core.csproj" />
     <ProjectReference Include="..\..\src\PCDoctor.Agent\PCDoctor.Agent.csproj" />
     <ProjectReference Include="..\..\src\PCDoctor.Diagnostics\PCDoctor.Diagnostics.csproj" />

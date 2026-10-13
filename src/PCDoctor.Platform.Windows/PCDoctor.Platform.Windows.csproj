@@ -1,9 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\PCDoctor.Core\PCDoctor.Core.csproj" />
+    <ProjectReference Include="..\PCDoctor.Diagnostics\PCDoctor.Diagnostics.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Management" Version="10.0.13" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.13" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.13" />
   </ItemGroup>
 </Project>

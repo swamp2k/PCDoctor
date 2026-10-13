@@ -1,0 +1,7 @@
+[20:57:01] [main/INFO]: Setting user: Steve
+[20:57:05] [Render thread/INFO]: Backend library: LWJGL version 3.3.1
+[20:57:09] [Render thread/WARN]: Missing sound for event: minecraft:item.goat_horn.play
+[20:58:10] [Server thread/ERROR]: Encountered an unexpected exception
+[20:58:10] [Server thread/ERROR]: java.lang.NullPointerException: Cannot invoke "net.minecraft.world.entity.Entity.getId()" because "target" is null
+[20:58:12] [Server thread/FATAL]: This crash report has been saved to: C:\Users\steve\AppData\Roaming\.minecraft\crash-reports\crash-2026-10-13_20.58.12-server.txt
+[20:58:13] [Render thread/INFO]: Stopping!

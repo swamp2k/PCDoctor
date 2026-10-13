@@ -1,0 +1,29 @@
+---- Minecraft Crash Report ----
+// Uh... Did I do that?
+
+Time: 2026-10-12 18:20:05
+Description: Initializing game
+
+java.lang.RuntimeException: Mixin transformation of net.minecraft.client.render.WorldRenderer failed
+	at net.fabricmc.loader.impl.launch.knot.KnotClassDelegate.getPostMixinClassByteArray(KnotClassDelegate.java:427)
+	at net.fabricmc.loader.impl.launch.knot.KnotClassDelegate.tryLoadClass(KnotClassDelegate.java:323)
+Caused by: org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError: An unexpected critical error was encountered
+	at org.spongepowered.asm.mixin.transformer.MixinProcessor.applyMixins(MixinProcessor.java:392)
+Caused by: org.spongepowered.asm.mixin.injection.throwables.InjectionError: Critical injection failure: @Inject annotation on renderSky could not find any targets matching 'renderSky' in WorldRenderer. Mixin [fancysky.mixins.json:WorldRendererMixin] from mod fancysky
+	at org.spongepowered.asm.mixin.injection.struct.InjectionInfo.validateTargets(InjectionInfo.java:656)
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- System Details --
+Details:
+	Minecraft Version: 1.21.1
+	Minecraft Version ID: 1.21.1
+	Operating System: Windows 10 (amd64) version 10.0
+	Java Version: 21.0.3, Microsoft
+	Is Modded: Definitely; Client brand changed to 'fabric'
+	Fabric Mods: 
+		fabric-api: Fabric API 0.102.0+1.21.1
+		fancysky: Fancy Sky 2.0.0
+		sodium: Sodium 0.5.11+mc1.21

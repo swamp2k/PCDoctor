@@ -58,11 +58,14 @@ public sealed class PerformanceTests : IDisposable
     {
         // Read 0 primes the counters; read 2 fails.
         var sampler = new FakeSampler(i => i == 2 ? throw new InvalidOperationException("counter gone") : FakeSampler.S(0, 10));
-        var recorder = new PerfRecorder(sampler, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(100));
-        var r = await recorder.RunAsync(_ => { }, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+        // Count-based, not time-based: Windows timers tick coarsely, so stop after 3 good samples.
+        using var cts = new CancellationTokenSource();
+        int seen = 0;
+        var recorder = new PerfRecorder(sampler, TimeSpan.FromMilliseconds(10));
+        var r = await recorder.RunAsync(_ => { if (++seen == 3) cts.Cancel(); }, cts.Token).WaitAsync(TimeSpan.FromSeconds(10));
 
-        Assert.Equal("limit", r.StopReason);
-        Assert.True(r.Samples.Count >= 2);
+        Assert.Equal(3, r.Samples.Count);
+        Assert.True(sampler.Reads >= 4); // the failed read was skipped, recording carried on
     }
 
     [Fact]

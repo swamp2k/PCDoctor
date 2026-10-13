@@ -7,7 +7,7 @@ namespace PCDoctor.Diagnostics;
 /// <summary>gaming_logs: finds Minecraft installs and their crash logs, and reads the important parts of one.</summary>
 public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
 {
-    /// <summary>Files bigger than this are read from the end only (latest.log can grow large).</summary>
+    /// <summary>At most this much of a file is read: the end of latest.log, the start of a crash file.</summary>
     const int MaxReadBytes = 2_000_000;
 
     readonly MinecraftLocator _locator = locator ?? new MinecraftLocator();
@@ -77,7 +77,8 @@ public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
         string text;
         try
         {
-            text = ReadCapped(file.Path);
+            // A crash report's key facts are at the top; a game log's are at the end.
+            text = ReadCapped(file.Path, fromEnd: file.Kind == "latest_log");
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -93,14 +94,16 @@ public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
         return new { file = file.Path, kind = file.Kind, modified = Local(file.Modified), content };
     }
 
-    static string ReadCapped(string path)
+    static string ReadCapped(string path, bool fromEnd)
     {
         // latest.log is held open by a running game; allow others to keep writing.
         using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        if (fs.Length > MaxReadBytes)
+        if (fs.Length > MaxReadBytes && fromEnd)
             fs.Seek(-MaxReadBytes, SeekOrigin.End);
         using var reader = new StreamReader(fs);
-        return reader.ReadToEnd();
+        var buffer = new char[MaxReadBytes];
+        int read = reader.ReadBlock(buffer, 0, buffer.Length);
+        return new string(buffer, 0, read);
     }
 
     static string? SafeFullPath(string path)

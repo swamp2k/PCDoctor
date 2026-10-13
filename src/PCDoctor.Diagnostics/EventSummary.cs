@@ -22,13 +22,18 @@ public static partial class EventSummary
 {
     const int MaxMessageChars = 400;
 
-    [GeneratedRegex(@"\d+")]
-    private static partial Regex Digits();
+    /// <summary>
+    /// Values that change between otherwise identical events: versions and dates/times (digits joined by . : / -,
+    /// with the invisible marks Windows puts in dates), hex values and long numbers such as process ids.
+    /// Short standalone numbers (Harddisk0 vs Harddisk1) are kept, because they name different devices.
+    /// </summary>
+    [GeneratedRegex(@"0x[0-9a-fA-F]+|\d+(?:[.:/\-\u200e\u200f]+\d+)+|\d{5,}")]
+    private static partial Regex Volatile();
 
-    /// <summary>Groups repeats, newest first. Version numbers and times in the first line do not split a group.</summary>
-    public static List<EventGroup> Group(IEnumerable<LogEvent> events, int maxGroups) =>
+    /// <summary>All groups, newest first. Version numbers and times in the first line do not split a group.</summary>
+    public static List<EventGroup> Group(IEnumerable<LogEvent> events) =>
         events
-            .GroupBy(e => (e.Log, e.Provider, e.Id, Key: Digits().Replace(FirstLine(e.Message), "#")))
+            .GroupBy(e => (e.Log, e.Provider, e.Id, Key: Volatile().Replace(FirstLine(e.Message), "#")))
             .Select(g =>
             {
                 var newest = g.MaxBy(e => e.Time)!;
@@ -38,7 +43,6 @@ public static partial class EventSummary
                     Cut(newest.Message), KnownEvents.Explain(g.Key.Provider, g.Key.Id));
             })
             .OrderByDescending(g => g.Last)
-            .Take(maxGroups)
             .ToList();
 
     static string FirstLine(string? message)

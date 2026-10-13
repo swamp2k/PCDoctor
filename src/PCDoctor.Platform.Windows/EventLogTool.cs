@@ -98,13 +98,16 @@ public sealed partial class EventLogTool : ITool
             }
         }
 
-        var groups = EventSummary.Group(events, maxGroups);
+        var allGroups = EventSummary.Group(events);
+        var groups = allGroups.Take(maxGroups).ToList();
         return ToolResult.Json(new
         {
             from = from.ToString("yyyy-MM-ddTHH:mm:ss"),
             to = to.ToString("yyyy-MM-ddTHH:mm:ss"),
             levels = warnings ? "critical, error, warning" : "critical, error",
             total_events = events.Count,
+            total_groups = allGroups.Count,
+            groups_left_out = allGroups.Count - groups.Count,
             groups = groups.Select(g => new
             {
                 log = g.Log,
@@ -120,7 +123,8 @@ public sealed partial class EventLogTool : ITool
             stopped_early_in = truncatedLogs.Count > 0 ? truncatedLogs : null,
             problems = problems.Count > 0 ? problems : null,
             note = "Times are local. Rows are grouped by source, event id and message, newest first. " +
-                   "Many errors on a healthy PC are harmless noise; weigh them by meaning, count and timing.",
+                   "Many errors on a healthy PC are harmless noise; weigh them by meaning, count and timing. " +
+                   "If groups_left_out is above 0, older kinds were left out: ask again with a shorter period, a provider, or a higher max_groups.",
         });
     }, ct);
 

@@ -127,7 +127,9 @@ public static class PlainReport
         var b = new StringBuilder();
         b.AppendLine(groups.Count == 0
             ? "Ingen fejl i Windows' hændelseslog i perioden. Fint."
-            : $"{Num(r, "total_events"):0} fejl i perioden, samlet i {groups.Count} slags (nyeste først):");
+            : $"{Num(r, "total_events"):0} fejl i perioden, samlet i {Num(r, "total_groups") ?? groups.Count:0} slags (nyeste først):");
+        if (Num(r, "groups_left_out") is > 0 and var left)
+            b.AppendLine($"Viser de {groups.Count} nyeste slags; {left:0} ældre slags er udeladt.");
         foreach (var g in groups)
         {
             b.AppendLine();

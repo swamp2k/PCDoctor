@@ -158,6 +158,19 @@ public class GamingLogsToolTests
     }
 
     [Fact]
+    public async Task A_huge_crash_report_is_read_from_the_top_so_the_cause_is_kept()
+    {
+        using var home = new FakeMinecraftHome();
+        // A big modpack's crash report: the cause is at the top, then megabytes of mod list.
+        File.AppendAllText(home.VanillaCrash, string.Concat(Enumerable.Repeat("\t\tsome-mod-1.0.jar |Some Mod |somemod |1.0 |DONE\n", 60_000)));
+        Assert.True(new FileInfo(home.VanillaCrash).Length > 2_500_000);
+        var r = await home.Tool().RunAsync(Json.Parse(JsonSerializer.Serialize(new { file = home.VanillaCrash })), CancellationToken.None);
+        Assert.False(r.IsError, r.Content[..Math.Min(500, r.Content.Length)]);
+        var content = JsonDocument.Parse(r.Content).RootElement.GetProperty("content");
+        Assert.Equal("Ticking entity", content.GetProperty("Description").GetString());
+    }
+
+    [Fact]
     public async Task No_minecraft_is_an_answer_not_an_error()
     {
         string empty = Path.Combine(Path.GetTempPath(), "pcdoctor-empty-" + Guid.NewGuid().ToString("N"));
@@ -212,7 +225,7 @@ public class EventLogTests
             Ev("Application Error", 1000, 10, "Faulting application name: Discord.exe, version: 1.0.9\nFaulting module: ntdll.dll"),
             Ev("Microsoft-Windows-Kernel-Power", 41, 60, "The system has rebooted without cleanly shutting down first.", "System"),
         };
-        var groups = EventSummary.Group(events, 10);
+        var groups = EventSummary.Group(events);
 
         Assert.Equal(3, groups.Count);
         Assert.Equal(41, groups[0].Id);
@@ -226,13 +239,33 @@ public class EventLogTests
     }
 
     [Fact]
-    public void Max_groups_is_respected_and_long_messages_are_cut()
+    public void Long_messages_are_cut_and_newest_comes_first()
     {
         var events = Enumerable.Range(0, 50).Select(i => Ev($"Source{i}", i, i, new string('x', 2000))).ToList();
-        var groups = EventSummary.Group(events, 5);
-        Assert.Equal(5, groups.Count);
+        var groups = EventSummary.Group(events);
+        Assert.Equal(50, groups.Count);
         Assert.All(groups, g => Assert.True(g.Message!.Length < 450));
         Assert.Equal("Source49", groups[0].Provider);
+    }
+
+    [Fact]
+    public void Different_devices_stay_apart_but_times_and_ids_do_not_split_groups()
+    {
+        var events = new[]
+        {
+            Ev("disk", 7, 0, @"The device, \Device\Harddisk0\DR0, has a bad block.", "System"),
+            Ev("disk", 7, 1, @"The device, \Device\Harddisk1\DR1, has a bad block.", "System"),
+            Ev("disk", 7, 2, @"The device, \Device\Harddisk1\DR1, has a bad block.", "System"),
+            Ev("EventLog", 6008, 3, "The previous system shutdown at 10:23:11 on \u200e13-\u200e10-\u200e2026 was unexpected.", "System"),
+            Ev("EventLog", 6008, 4, "The previous system shutdown at 22:01:45 on \u200e14-\u200e10-\u200e2026 was unexpected.", "System"),
+            Ev("Application Error", 1000, 5, "Faulting application name: javaw.exe, version: 8.0.3510.10, time stamp: 0x64b0c5f4"),
+            Ev("Application Error", 1000, 6, "Faulting application name: javaw.exe, version: 8.0.3910.12, time stamp: 0x65aa0011"),
+        };
+        var groups = EventSummary.Group(events);
+        Assert.Equal(2, groups.Count(g => g.Id == 7));
+        Assert.Equal(2, groups.Single(g => g.Id == 7 && g.Message!.Contains("Harddisk1")).Count);
+        Assert.Equal(2, groups.Single(g => g.Id == 6008).Count);
+        Assert.Equal(2, groups.Single(g => g.Id == 1000).Count);
     }
 
     [Fact]
@@ -268,6 +301,14 @@ public class EventLogTests
         Assert.Contains("13-10 21:00  KRITISK Microsoft-Windows-Kernel-Power (41)", text);
         Assert.Contains("Application Error (1000)  ×3", text);
         Assert.Contains("\"Faulting application name: javaw.exe\"", text);
+        Assert.DoesNotContain("udeladt", text);
+        string cut = PlainReport.Events(JsonDocument.Parse("""
+            {"total_events":90,"total_groups":30,"groups_left_out":28,"groups":[
+              {"source":"disk","event_id":7,"count":1,"last":"2026-10-13T21:00:00"},
+              {"source":"disk","event_id":51,"count":1,"last":"2026-10-13T20:00:00"}]}
+            """).RootElement);
+        Assert.Contains("samlet i 30 slags", cut);
+        Assert.Contains("Viser de 2 nyeste slags; 28 ældre slags er udeladt.", cut);
         Assert.Contains("Ingen fejl", PlainReport.Events(JsonDocument.Parse("""{"total_events":0,"groups":[]}""").RootElement));
     }
 

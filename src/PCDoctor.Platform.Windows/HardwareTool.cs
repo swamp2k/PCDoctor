@@ -12,7 +12,8 @@ public sealed class HardwareTool : ITool
 {
     public string Name => "system_hardware";
     public string Description =>
-        "Read the PC's hardware and OS: CPU, graphics cards with driver versions, RAM, Windows version, disks with free space, motherboard.";
+        "Read the PC's hardware and OS: CPU, graphics cards with driver versions, RAM, Windows version, disks with free space, motherboard, " +
+        "and devices Windows reports a problem with (missing driver, disabled, failed to start).";
     public ToolKind Kind => ToolKind.ReadOnly;
     public JsonObject InputSchema => new() { ["type"] = "object", ["properties"] = new JsonObject() };
 
@@ -27,7 +28,9 @@ public sealed class HardwareTool : ITool
             ["os"] = Query("SELECT Caption, Version, BuildNumber, OSArchitecture, LastBootUpTime, FreePhysicalMemory, TotalVisibleMemorySize FROM Win32_OperatingSystem", ct),
             ["disks"] = Query("SELECT DeviceID, VolumeName, FileSystem, Size, FreeSpace FROM Win32_LogicalDisk WHERE DriveType = 3", ct),
             ["motherboard"] = Query("SELECT Manufacturer, Product FROM Win32_BaseBoard", ct),
-            ["note"] = "Sizes are in bytes, except FreePhysicalMemory/TotalVisibleMemorySize (KB). GPU AdapterRAM is capped at 4 GB by Windows and may be wrong for larger cards.",
+            ["problem_devices"] = Query("SELECT Name, PNPClass, Status, ConfigManagerErrorCode FROM Win32_PnPEntity WHERE ConfigManagerErrorCode <> 0 AND ConfigManagerErrorCode <> 45", ct),
+            ["note"] = "Sizes are in bytes, except FreePhysicalMemory/TotalVisibleMemorySize (KB). GPU AdapterRAM is capped at 4 GB by Windows and may be wrong for larger cards. " +
+                       "problem_devices: ConfigManagerErrorCode 28 = no driver installed, 22 = disabled, 10 = cannot start, 43 = stopped after reporting a problem. Devices that are just unplugged (code 45) are left out.",
         };
         return ToolResult.Json(result);
     }, ct);

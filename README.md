@@ -39,15 +39,25 @@ It stops by itself after 15 minutes. About once a second it notes CPU, graphics 
 program used the most CPU. The screen is not recorded. Afterwards you see a chart and a summary, and
 **Spørg PC Doctor om optagelsen** asks the agent what held the PC back. The newest 20 recordings are kept.
 
+## Diagnostics without AI
+
+**Diagnostik** opens a page with five tabs: Hardware, Forbrug (usage), Netværk, Hændelser (event log) and Minecraft.
+Each tab runs the same built-in tools the agent uses, directly, and shows the result in plain Danish.
+It needs no API key, makes no AI call, and changes nothing on the PC. "Vis rådata" shows exactly what the agent
+would see, and **Spørg PC Doctor om dette** hands the topic to the agent in the main window.
+
 ## Built-in tools
 
 | Tool | What it does |
 |---|---|
-| `system_hardware` | CPU, graphics cards and drivers, RAM, Windows version, disks, motherboard (WMI, no shell) |
+| `system_hardware` | CPU, graphics cards and drivers, RAM, Windows version, disks, motherboard, devices with driver problems (WMI, no shell) |
+| `system_resources` | How busy the PC is right now: CPU, GPU, RAM, disk activity, free space per drive, time since restart |
 | `system_processes` | Top programs by CPU and memory, measured over one second |
+| `system_events` | Errors from the Windows Event Log, grouped and explained (unexpected restarts, blue screens, crashes, driver resets, disk errors); can look around a given time |
 | `network_ping` | Ping the router, 1.1.1.1 and 8.8.8.8, or named hosts |
 | `network_dns` | Resolve names and list the DNS servers in use |
 | `network_tcp` | Can we connect to host:port? |
+| `gaming_logs` | Finds Minecraft (official launcher, CurseForge, Prism, Modrinth, ATLauncher, GDLauncher) and reads crash reports, Java crash logs and latest.log |
 | `performance_recording` | Reads a recording made with Optag ydelse: summary, timeline and top programs |
 | `shell_execute` | Windows PowerShell, governed by the mode above |
 
@@ -65,8 +75,9 @@ Everything stays on the PC, in `%LOCALAPPDATA%\PCDoctor`:
 ```
 src/PCDoctor.Core              contracts: tools, modes, settings, process runner
 src/PCDoctor.Agent             agent loop, permission check, Anthropic API adapter
-src/PCDoctor.Diagnostics       cross-platform tools (processes, ping, DNS, TCP)
-src/PCDoctor.Platform.Windows  WMI hardware, PowerShell, Credential Manager
+src/PCDoctor.Diagnostics       cross-platform tools and analysis (processes, resources, network, Minecraft logs,
+                               event grouping, plain-Danish reports for the Diagnostics page)
+src/PCDoctor.Platform.Windows  WMI hardware, Event Log, performance counters, PowerShell, Credential Manager
 src/PCDoctor.App               Avalonia window
 tests/PCDoctor.Tests           xUnit tests
 ```

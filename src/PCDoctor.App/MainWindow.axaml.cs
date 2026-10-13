@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     SessionLog _log = new();
     CancellationTokenSource? _running;
     RecordingWindow? _recordingWindow;
+    DiagnosticsWindow? _diagnosticsWindow;
 
     public MainWindow()
     {
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
         SettingsButton.Click += async (_, _) => await OpenSettingsAsync();
         NewChatButton.Click += (_, _) => NewConversation();
         RecordButton.Click += (_, _) => OpenRecording();
+        DiagnosticsButton.Click += (_, _) => OpenDiagnostics();
         ShowRequestButton.Click += async (_, _) =>
             await new TextWindow("Seneste API-forespørgsel (uden API-nøgle)", _model?.LastRequestJson ?? "Ingen forespørgsel sendt endnu.").ShowDialog(this);
 
@@ -212,6 +214,18 @@ public partial class MainWindow : Window
         _recordingWindow = new RecordingWindow(Services.CreatePerfSampler(), new PerfRecordingStore(), Ask);
         _recordingWindow.Closed += (_, _) => _recordingWindow = null;
         _recordingWindow.Show(this);
+    }
+
+    void OpenDiagnostics()
+    {
+        if (_diagnosticsWindow is not null)
+        {
+            _diagnosticsWindow.Activate();
+            return;
+        }
+        _diagnosticsWindow = new DiagnosticsWindow(_tools, Ask);
+        _diagnosticsWindow.Closed += (_, _) => _diagnosticsWindow = null;
+        _diagnosticsWindow.Show(this);
     }
 
     /// <summary>Puts a question in the chat and sends it, as if typed. False if an investigation is running.</summary>

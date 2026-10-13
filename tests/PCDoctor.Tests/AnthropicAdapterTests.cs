@@ -37,11 +37,51 @@ public class AnthropicAdapterTests
         usage = new { input_tokens = 10, output_tokens = 5 },
     });
 
-    static (AnthropicChatModel model, FakeHandler handler) Create()
+    static (AnthropicChatModel model, FakeHandler handler) Create(AgentSettings? settings = null)
     {
         var handler = new FakeHandler();
         var client = new AnthropicClient { ApiKey = "sk-test-secret", HttpClient = new HttpClient(handler), MaxRetries = 0 };
-        return (new AnthropicChatModel(client, new AgentSettings()), handler);
+        return (new AnthropicChatModel(client, settings ?? new AgentSettings()), handler);
+    }
+
+    [Fact]
+    public async Task Answers_in_danish_by_default_and_the_chosen_language_otherwise()
+    {
+        var (dk, dkHandler) = Create();
+        dkHandler.Responses.Enqueue(Reply("end_turn", new { type = "text", text = "ok" }));
+        dk.AddUserText("q");
+        await dk.NextTurnAsync(Tools, CancellationToken.None);
+        string dkSystem = dkHandler.Requests[0].GetProperty("system").GetRawText();
+        Assert.Contains("Danish (dansk", dkSystem);
+        Assert.Contains("not Norwegian", dkSystem);
+
+        var (de, deHandler) = Create(new AgentSettings { Language = AnswerLanguage.German });
+        deHandler.Responses.Enqueue(Reply("end_turn", new { type = "text", text = "ok" }));
+        de.AddUserText("q");
+        await de.NextTurnAsync(Tools, CancellationToken.None);
+        Assert.Contains("German", deHandler.Requests[0].GetProperty("system").GetRawText());
+    }
+
+    [Fact]
+    public async Task Switching_language_mid_conversation_adds_a_note_and_never_edits_earlier_turns()
+    {
+        var (model, handler) = Create();
+        handler.Responses.Enqueue(Reply("end_turn", new { type = "text", text = "ok" }));
+        handler.Responses.Enqueue(Reply("end_turn", new { type = "text", text = "ok" }));
+
+        model.AddUserText("first");
+        await model.NextTurnAsync(Tools, CancellationToken.None);
+        model.SetLanguage(AnswerLanguage.English);
+        model.AddUserText("second");
+        await model.NextTurnAsync(Tools, CancellationToken.None);
+
+        var first = handler.Requests[0];
+        var second = handler.Requests[1];
+        Assert.Equal(first.GetProperty("system").GetRawText(), second.GetProperty("system").GetRawText());
+        Assert.Equal(first.GetProperty("messages")[0].GetRawText(), second.GetProperty("messages")[0].GetRawText());
+        var last = second.GetProperty("messages")[2].GetProperty("content");
+        Assert.Contains("English", last[0].GetProperty("text").GetString());
+        Assert.Equal("second", last[1].GetProperty("text").GetString());
     }
 
     static readonly ITool[] Tools = [new RecordingTool("system_hardware", ToolKind.ReadOnly)];

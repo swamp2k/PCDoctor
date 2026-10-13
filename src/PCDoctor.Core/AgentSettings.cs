@@ -15,6 +15,9 @@ public sealed class AgentSettings
     /// <summary>Tool output longer than this is cut; the full output is saved to a file.</summary>
     public int MaxOutputChars { get; set; } = 20_000;
 
+    /// <summary>The language the agent answers in.</summary>
+    public AnswerLanguage Language { get; set; } = AnswerLanguage.Danish;
+
     /// <summary>Max tokens per model reply.</summary>
     public int MaxTokens { get; set; } = 16_000;
 }

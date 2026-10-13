@@ -18,6 +18,9 @@ public sealed class AnthropicChatModel : IChatModel
     readonly List<MessageParam> _history = [];
     readonly List<ContentBlockParam> _pendingUser = [];
     readonly HashSet<string> _unansweredToolIds = [];
+    readonly string _systemPrompt;
+    AnswerLanguage _language;
+    bool _languageNoteDue;
 
     public AnthropicChatModel(string apiKey, AgentSettings settings)
         : this(new AnthropicClient { ApiKey = apiKey }, settings) { }
@@ -27,6 +30,16 @@ public sealed class AnthropicChatModel : IChatModel
     {
         _client = client;
         _settings = settings;
+        _language = settings.Language;
+        // The system prompt is fixed for the whole conversation so earlier turns stay unchanged.
+        _systemPrompt = SystemPrompt.For(_language);
+    }
+
+    public void SetLanguage(AnswerLanguage language)
+    {
+        if (language == _language) return;
+        _language = language;
+        _languageNoteDue = true;
     }
 
     public string? LastRequestJson { get; private set; }
@@ -38,6 +51,11 @@ public sealed class AnthropicChatModel : IChatModel
         foreach (string id in _unansweredToolIds)
             _pendingUser.Add(new ToolResultBlockParam { ToolUseID = id, Content = "Stopped by the user before this tool ran.", IsError = true });
         _unansweredToolIds.Clear();
+        if (_languageNoteDue)
+        {
+            _pendingUser.Add(new TextBlockParam { Text = $"[PC Doctor setting changed: from now on, write all answers in {_language.PromptName()}.]" });
+            _languageNoteDue = false;
+        }
         _pendingUser.Add(new TextBlockParam { Text = text });
     }
 
@@ -63,7 +81,7 @@ public sealed class AnthropicChatModel : IChatModel
             MaxTokens = _settings.MaxTokens,
             Thinking = new ThinkingConfigAdaptive(),
             OutputConfig = new OutputConfig { Effort = Effort.Medium },
-            System = SystemPrompt.Text,
+            System = _systemPrompt,
             Tools = [.. tools.Select(ToApiTool)],
             Messages = messages,
         };

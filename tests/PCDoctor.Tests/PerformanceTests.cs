@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PCDoctor.Agent;
 using PCDoctor.Core;
 using PCDoctor.Diagnostics;
 using PCDoctor.Platform.Windows;
@@ -158,5 +159,40 @@ public sealed class PerformanceTests : IDisposable
         Assert.True(s.RamUsedGb > 0);
         if (s.Gpu is { } gpu) Assert.InRange(gpu, 0, 100);
         if (s.Disk is { } disk) Assert.InRange(disk, 0, 100);
+    }
+}
+
+public class PerformanceAnalysisTests
+{
+    [Fact]
+    public async Task Agent_can_read_a_recording_and_gets_its_numbers_back()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "pcd-rec-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new PerfRecordingStore(dir);
+            var rec = new PerfRecording { Started = DateTimeOffset.Now };
+            for (int i = 1; i <= 900; i++)
+                rec.Samples.Add(FakeSampler.S(i, 97, gpu: 30, top: "javaw"));
+            string id = store.Save(rec);
+
+            var model = new ScriptedModel();
+            model.Enqueue(new ModelTurn("", [Json.Call("performance_recording")], "tool_use"));
+            model.Enqueue(new ModelTurn("CPU'en er flaskehalsen.", [], "end_turn"));
+            var settings = new AgentSettings();
+            var invoker = new ToolInvoker([new PerformanceRecordingTool(store)], settings, () => PermissionMode.ReadOnly, (_, _) => Task.FromResult(false));
+
+            await new AgentLoop(model, invoker, settings).RunAsync($"Kig på min ydelsesoptagelse {id}", _ => { }, CancellationToken.None);
+
+            var result = Assert.Single(model.Results).Result;
+            Assert.False(result.IsError);
+            Assert.Contains(id, result.Content);
+            Assert.Contains("javaw", result.Content);
+            Assert.True(result.Content.Length < 20_000, $"tool result too large for the model: {result.Content.Length} chars");
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+        }
     }
 }

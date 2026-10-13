@@ -31,6 +31,7 @@ public partial class MainWindow : Window
         ChatList.ItemsSource = _chat;
         ActivityList.ItemsSource = _activity;
 
+        SetupLanguagePicker();
         ModeBox.SelectionChanged += (_, _) => SetMode((PermissionMode)Math.Max(0, ModeBox.SelectedIndex));
         SendButton.Click += async (_, _) => await SendAsync();
         StopButton.Click += (_, _) => _running?.Cancel();
@@ -71,6 +72,26 @@ public partial class MainWindow : Window
         };
         if (log)
             AddActivity(new AgentEvent(AgentEventKind.Info, $"Tilstand skiftet til {ModeName(mode)}"));
+    }
+
+    void SetupLanguagePicker()
+    {
+        foreach (AnswerLanguage language in Enum.GetValues<AnswerLanguage>())
+        {
+            var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
+            row.Children.Add(Flags.Create(language));
+            row.Children.Add(new TextBlock { Text = language.NativeName(), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            LanguageBox.Items.Add(new ComboBoxItem { Content = row, Tag = language });
+        }
+        LanguageBox.SelectedIndex = (int)_settings.Language;
+        LanguageBox.SelectionChanged += (_, _) =>
+        {
+            if (LanguageBox.SelectedItem is not ComboBoxItem { Tag: AnswerLanguage language }) return;
+            _settings.Language = language;
+            _model?.SetLanguage(language);
+            try { Services.SaveSettings(_settings); } catch (IOException) { /* keep working with the in-memory choice */ }
+            AddActivity(new AgentEvent(AgentEventKind.Info, $"Svarsprog: {language.NativeName()}"));
+        };
     }
 
     void RefreshKeyState()

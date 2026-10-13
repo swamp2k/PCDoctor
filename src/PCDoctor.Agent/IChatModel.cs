@@ -21,6 +21,12 @@ public sealed record ToolCallResult(string ToolCallId, ToolResult Result);
 public interface IChatModel
 {
     void AddUserText(string text);
+
+    /// <summary>
+    /// Switch the answer language. Takes effect from the next question. History is never edited:
+    /// mid-conversation, the switch is sent as a note with the next question.
+    /// </summary>
+    void SetLanguage(AnswerLanguage language);
     void AddToolResults(IReadOnlyList<ToolCallResult> results);
     Task<ModelTurn> NextTurnAsync(IReadOnlyList<ITool> tools, CancellationToken ct);
 

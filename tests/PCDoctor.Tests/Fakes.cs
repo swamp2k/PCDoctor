@@ -31,6 +31,7 @@ sealed class ScriptedModel : IChatModel
     public string? LastRequestJson => null;
 
     public void AddUserText(string text) => UserTexts.Add(text);
+    public void SetLanguage(AnswerLanguage language) { }
     public void AddToolResults(IReadOnlyList<ToolCallResult> results) => Results.AddRange(results);
 
     public Task<ModelTurn> NextTurnAsync(IReadOnlyList<ITool> tools, CancellationToken ct) =>

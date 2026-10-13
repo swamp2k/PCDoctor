@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using PCDoctor.Agent;
 using PCDoctor.Core;
+using PCDoctor.Storage;
 
 namespace PCDoctor.App;
 
@@ -20,10 +21,12 @@ public partial class MainWindow : Window
     PermissionMode _mode = PermissionMode.ReadOnly;
     IChatModel? _model;
     AgentLoop? _loop;
-    SessionLog _log = new();
+    readonly SessionStore? _store = Services.OpenHistory();
+    long? _sessionId;
     CancellationTokenSource? _running;
     RecordingWindow? _recordingWindow;
     DiagnosticsWindow? _diagnosticsWindow;
+    HistoryWindow? _historyWindow;
 
     public MainWindow()
     {
@@ -48,13 +51,19 @@ public partial class MainWindow : Window
         NewChatButton.Click += (_, _) => NewConversation();
         RecordButton.Click += (_, _) => OpenRecording();
         DiagnosticsButton.Click += (_, _) => OpenDiagnostics();
+        HistoryButton.Click += (_, _) => OpenHistory();
         ShowRequestButton.Click += async (_, _) =>
-            await new TextWindow("Seneste API-forespørgsel (uden API-nøgle)", _model?.LastRequestJson ?? "Ingen forespørgsel sendt endnu.").ShowDialog(this);
+            await new TextWindow("Seneste API-forespørgsel (hemmeligheder skjult)",
+                _model?.LastRequestJson is { } json ? SecretMasker.Apply(json, _secrets.Read()) : "Ingen forespørgsel sendt endnu.").ShowDialog(this);
 
         SetMode(PermissionMode.ReadOnly, log: false);
         RefreshKeyState();
-        StatusText.Text = $"Sessionslog: {_log.FilePath}";
+        StatusText.Text = ReadyText;
     }
+
+    string ReadyText => _store is null
+        ? "Klar. Historikken kunne ikke åbnes, så samtalen bliver ikke gemt."
+        : "Klar. Samtalen gemmes under Historik.";
 
     static string ModeName(PermissionMode mode) => mode switch
     {
@@ -111,8 +120,8 @@ public partial class MainWindow : Window
         _loop = null;
         _chat.Clear();
         _activity.Clear();
-        _log = new SessionLog();
-        StatusText.Text = $"Sessionslog: {_log.FilePath}";
+        _sessionId = null;
+        StatusText.Text = ReadyText;
     }
 
     async Task SendAsync()
@@ -129,16 +138,21 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_sessionId is null)
+            StartSession(question);
+
         if (_loop is null)
         {
-            _model = new AnthropicChatModel(key, _settings);
+            var model = new AnthropicChatModel(key, _settings);
+            long? sessionId = _sessionId;
+            model.Exchanged = x => SaveToHistory(store => store.AddApiCall(sessionId!.Value, x), sessionId);
+            _model = model;
             var invoker = new ToolInvoker(_tools, _settings, () => _mode, ApproveAsync);
             _loop = new AgentLoop(_model, invoker, _settings);
         }
 
         InputBox.Text = "";
-        AddChat("Dig", question, "#223399FF");
-        AddActivity(new AgentEvent(AgentEventKind.UserMessage, question));
+        OnAgentEvent(new AgentEvent(AgentEventKind.UserMessage, question));
 
         _running = new CancellationTokenSource();
         SetRunning(true);
@@ -164,12 +178,40 @@ public partial class MainWindow : Window
     void OnAgentEvent(AgentEvent e)
     {
         AddActivity(e);
-        if (e.Kind == AgentEventKind.AssistantMessage)
-            AddChat("PC Doctor", e.Title, "#2200A86B");
-        else if (e.Kind == AgentEventKind.Error)
-            AddChat("Fejl", e.Detail is null ? e.Title : $"{e.Title}\n\n{e.Detail}", "#33FF0000");
-        else if (e.Kind == AgentEventKind.Info && e.Title.StartsWith("Stoppet"))
-            AddChat("PC Doctor", e.Title, "#22808080");
+        if (ChatItem.FromEvent(e) is { } item)
+        {
+            _chat.Add(item);
+            Dispatcher.UIThread.Post(() => ChatScroll.ScrollToEnd(), DispatcherPriority.Background);
+        }
+    }
+
+    void StartSession(string question)
+    {
+        string settings = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            mode = ModeName(_mode),
+            _settings.MaxIterations,
+            _settings.ShellTimeoutSeconds,
+            _settings.MaxShellTimeoutSeconds,
+            _settings.MaxOutputChars,
+            _settings.MaxTokens,
+            thinking = "adaptive",
+            effort = "medium",
+        }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        try
+        {
+            _sessionId = _store?.StartSession(new SessionInfo(
+                question, AnthropicChatModel.ModelId, _settings.Language.NativeName(), settings, SessionStore.DescribeComputer()));
+        }
+        catch (Exception) { _sessionId = null; /* history must never block a diagnosis */ }
+    }
+
+    /// <summary>Writes to the history; a failure there never breaks a diagnosis. Safe from any thread.</summary>
+    void SaveToHistory(Action<SessionStore> write, long? sessionId)
+    {
+        if (_store is null || sessionId is null) return;
+        try { write(_store); }
+        catch (Exception) { /* keep investigating even if the history file is unavailable */ }
     }
 
     void SetRunning(bool running)
@@ -178,19 +220,13 @@ public partial class MainWindow : Window
         StopButton.IsEnabled = running;
         NewChatButton.IsEnabled = !running;
         SettingsButton.IsEnabled = !running;
-        if (running) StatusText.Text = "Undersøger…";
-        else StatusText.Text = $"Klar. Sessionslog: {_log.FilePath}";
-    }
-
-    void AddChat(string who, string text, string color)
-    {
-        _chat.Add(new ChatItem { Who = who, Text = text, Background = Brush.Parse(color) });
-        Dispatcher.UIThread.Post(() => ChatScroll.ScrollToEnd(), DispatcherPriority.Background);
+        StatusText.Text = running ? "Undersøger…" : ReadyText;
     }
 
     void AddActivity(AgentEvent e)
     {
-        _log.Write(e, _mode);
+        var mode = _mode;
+        SaveToHistory(store => store.AddEvent(_sessionId!.Value, e, mode), _sessionId);
         _activity.Add(new ActivityItem(e));
         Dispatcher.UIThread.Post(() => ActivityScroll.ScrollToEnd(), DispatcherPriority.Background);
     }
@@ -226,6 +262,18 @@ public partial class MainWindow : Window
         _diagnosticsWindow = new DiagnosticsWindow(_tools, Ask);
         _diagnosticsWindow.Closed += (_, _) => _diagnosticsWindow = null;
         _diagnosticsWindow.Show(this);
+    }
+
+    void OpenHistory()
+    {
+        if (_historyWindow is not null)
+        {
+            _historyWindow.Activate();
+            return;
+        }
+        _historyWindow = new HistoryWindow(_store);
+        _historyWindow.Closed += (_, _) => _historyWindow = null;
+        _historyWindow.Show(this);
     }
 
     /// <summary>Puts a question in the chat and sends it, as if typed. False if an investigation is running.</summary>

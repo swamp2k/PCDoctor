@@ -44,6 +44,9 @@ public sealed class AnthropicChatModel : IChatModel
 
     public string? LastRequestJson { get; private set; }
 
+    /// <summary>Called after every API call with the request and the response (or error), for the history.</summary>
+    public Action<ApiExchange>? Exchanged { get; set; }
+
     public void AddUserText(string text)
     {
         // If the previous run was stopped mid-way, every tool call still needs a result
@@ -85,9 +88,22 @@ public sealed class AnthropicChatModel : IChatModel
             Tools = [.. tools.Select(ToApiTool)],
             Messages = messages,
         };
-        LastRequestJson = SafeSerialize(parameters);
+        string request = SafeSerialize(parameters);
+        LastRequestJson = request;
 
-        Message response = await _client.Messages.Create(parameters, ct);
+        var started = DateTimeOffset.Now;
+        Message response;
+        try
+        {
+            response = await _client.Messages.Create(parameters, ct);
+        }
+        catch (Exception ex)
+        {
+            Exchanged?.Invoke(new ApiExchange(started, request, null, Seconds(started),
+                ex is OperationCanceledException ? "Stoppet af brugeren" : $"{ex.GetType().Name}: {ex.Message}"));
+            throw;
+        }
+        Exchanged?.Invoke(new ApiExchange(started, request, SafeSerialize(response), Seconds(started)));
 
         // Only commit to history once the call succeeded, so a cancelled call leaves no trace.
         _history.Add(userMessage);
@@ -155,10 +171,26 @@ public sealed class AnthropicChatModel : IChatModel
         };
     }
 
-    static string SafeSerialize(MessageCreateParams p)
+    static double Seconds(DateTimeOffset started) => (DateTimeOffset.Now - started).TotalSeconds;
+
+    static readonly JsonSerializerOptions Readable = new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    /// <summary>
+    /// The JSON as sent or received, readable (Danish letters and quotes unescaped). For a request this is
+    /// the body only: the API key travels in a header, never in the body, so the body is safe to show.
+    /// </summary>
+    static string SafeSerialize(object p)
     {
-        // The API key travels in a header, never in the body, so the body is safe to show.
-        try { return p.ToString() ?? ""; }
-        catch (Exception ex) { return $"(could not serialize request: {ex.Message})"; }
+        try
+        {
+            string json = p.ToString() ?? "";
+            using var doc = JsonDocument.Parse(json);
+            JsonElement root = doc.RootElement;
+            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("BodyData", out JsonElement body))
+                root = body;
+            return JsonSerializer.Serialize(root, Readable);
+        }
+        catch (JsonException) { return p.ToString() ?? ""; }
+        catch (Exception ex) { return $"(could not serialize: {ex.Message})"; }
     }
 }

@@ -17,10 +17,15 @@ static class Services
         tools.Add(new PingTool());
         tools.Add(new DnsTool());
         tools.Add(new TcpTool());
+        tools.Add(new PerformanceRecordingTool(new PerfRecordingStore()));
         if (OperatingSystem.IsWindows())
             tools.Add(new PowerShellTool(settings));
         return tools;
     }
+
+    /// <summary>Performance recording reads Windows counters; there is no sampler elsewhere.</summary>
+    public static IPerfSampler? CreatePerfSampler() =>
+        OperatingSystem.IsWindows() ? new WindowsPerfSampler() : null;
 
     public static ISecretStore CreateSecretStore() =>
         OperatingSystem.IsWindows() ? new CredentialManagerStore() : new EnvironmentSecretStore();

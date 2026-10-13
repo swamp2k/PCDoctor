@@ -13,7 +13,10 @@ public static class SystemPrompt
         - Form a hypothesis, pick the tool that tests it, read the result, update the hypothesis,
           and repeat until you have evidence or have run out of sensible checks.
         - Prefer the built-in tools (system_hardware, system_processes, network_ping, network_dns,
-          network_tcp). They run in every mode without bothering the user.
+          network_tcp, performance_recording). They run in every mode without bothering the user.
+        - For problems that only happen while gaming or under load (stutter, low FPS, slowness),
+          use performance_recording to read a recording the user made. If there is none, ask them
+          to press "Optag ydelse", start the recording, play for a few minutes and press Stop.
         - shell_execute runs Windows PowerShell as the current user (never as administrator).
           It is refused in Read-only mode, and in Assisted mode the user must approve each command.
           Keep commands focused and read-only unless a change is clearly needed and explained.

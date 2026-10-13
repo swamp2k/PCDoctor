@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     AgentLoop? _loop;
     SessionLog _log = new();
     CancellationTokenSource? _running;
+    RecordingWindow? _recordingWindow;
 
     public MainWindow()
     {
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
         }, RoutingStrategies.Tunnel);
         SettingsButton.Click += async (_, _) => await OpenSettingsAsync();
         NewChatButton.Click += (_, _) => NewConversation();
+        RecordButton.Click += (_, _) => OpenRecording();
         ShowRequestButton.Click += async (_, _) =>
             await new TextWindow("Seneste API-forespørgsel (uden API-nøgle)", _model?.LastRequestJson ?? "Ingen forespørgsel sendt endnu.").ShowDialog(this);
 
@@ -178,6 +180,29 @@ public partial class MainWindow : Window
             using var reg = ct.Register(() => Dispatcher.UIThread.Post(() => dialog.Close(false)));
             return await dialog.ShowDialog<bool>(this);
         });
+
+    void OpenRecording()
+    {
+        if (_recordingWindow is not null)
+        {
+            _recordingWindow.Activate();
+            return;
+        }
+        _recordingWindow = new RecordingWindow(Services.CreatePerfSampler(), new PerfRecordingStore(), Ask);
+        _recordingWindow.Closed += (_, _) => _recordingWindow = null;
+        _recordingWindow.Show(this);
+    }
+
+    /// <summary>Puts a question in the chat and sends it, as if typed. False if an investigation is running.</summary>
+    bool Ask(string question)
+    {
+        if (_running is not null)
+            return false;
+        InputBox.Text = question;
+        Activate();
+        _ = SendAsync();
+        return true;
+    }
 
     async Task OpenSettingsAsync()
     {

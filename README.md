@@ -32,6 +32,13 @@ nothing else needs to be installed.
 
 **Stop** ends the investigation and kills any running command. Each command also has a time limit.
 
+## Recording performance
+
+**Optag ydelse** opens the recorder. Press Start, play the game (or do whatever is slow), come back and press Stop.
+It stops by itself after 15 minutes. About once a second it notes CPU, graphics card (GPU), RAM and disk use, and which
+program used the most CPU. The screen is not recorded. Afterwards you see a chart and a summary, and
+**Spørg PC Doctor om optagelsen** asks the agent what held the PC back. The newest 20 recordings are kept.
+
 ## Built-in tools
 
 | Tool | What it does |
@@ -41,6 +48,7 @@ nothing else needs to be installed.
 | `network_ping` | Ping the router, 1.1.1.1 and 8.8.8.8, or named hosts |
 | `network_dns` | Resolve names and list the DNS servers in use |
 | `network_tcp` | Can we connect to host:port? |
+| `performance_recording` | Reads a recording made with Optag ydelse: summary, timeline and top programs |
 | `shell_execute` | Windows PowerShell, governed by the mode above |
 
 ## Where things are saved
@@ -49,6 +57,7 @@ Everything stays on the PC, in `%LOCALAPPDATA%\PCDoctor`:
 
 - `sessions\` one log file per conversation: questions, tool calls, commands, output and answers.
 - `outputs\` full output of commands whose output was too long to send to the model.
+- `recordings\` performance recordings (newest 20).
 - `settings.json` limits (rounds per question, time limits, output size). No secrets.
 
 ## For developers

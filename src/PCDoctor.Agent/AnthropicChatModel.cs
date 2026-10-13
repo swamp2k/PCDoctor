@@ -63,7 +63,7 @@ public sealed class AnthropicChatModel : IChatModel
             MaxTokens = _settings.MaxTokens,
             Thinking = new ThinkingConfigAdaptive(),
             OutputConfig = new OutputConfig { Effort = Effort.Medium },
-            System = SystemPrompt.Text,
+            System = SystemPrompt.For(_settings.Language),
             Tools = [.. tools.Select(ToApiTool)],
             Messages = messages,
         };

@@ -46,6 +46,10 @@ public partial class MainWindow : Window
         ShowRequestButton.Click += async (_, _) =>
             await new TextWindow("Seneste API-forespørgsel (uden API-nøgle)", _model?.LastRequestJson ?? "Ingen forespørgsel sendt endnu.").ShowDialog(this);
 
+        LanguageBox.ItemsSource = Flags.Languages.Select(l => Flags.Item(l.Code, l.Name)).ToList();
+        LanguageBox.SelectedIndex = Math.Max(0, Array.FindIndex(Flags.Languages, l => l.Code == _settings.Language));
+        LanguageBox.SelectionChanged += (_, _) => SetLanguage(Flags.Languages[Math.Max(0, LanguageBox.SelectedIndex)]);
+
         SetMode(PermissionMode.ReadOnly, log: false);
         RefreshKeyState();
         StatusText.Text = $"Sessionslog: {_log.FilePath}";
@@ -69,6 +73,15 @@ public partial class MainWindow : Window
         };
         if (log)
             AddActivity(new AgentEvent(AgentEventKind.Info, $"Tilstand skiftet til {ModeName(mode)}"));
+    }
+
+    void SetLanguage((string Code, string Name) language)
+    {
+        if (_settings.Language == language.Code) return;
+        // The model reads this on every request, so the next answer uses the new language.
+        _settings.Language = language.Code;
+        try { Services.SaveSettings(_settings); } catch (Exception) { /* keep it for this session at least */ }
+        AddActivity(new AgentEvent(AgentEventKind.Info, $"Sprog skiftet til {language.Name}"));
     }
 
     void RefreshKeyState()

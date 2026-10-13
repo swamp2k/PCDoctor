@@ -17,4 +17,7 @@ public sealed class AgentSettings
 
     /// <summary>Max tokens per model reply.</summary>
     public int MaxTokens { get; set; } = 16_000;
+
+    /// <summary>Language PC Doctor answers in: "da", "en", "no" or "sv". Danish by default.</summary>
+    public string Language { get; set; } = "da";
 }

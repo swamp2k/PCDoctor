@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:PCDoctor.App"
+        x:Class="PCDoctor.App.RecordingWindow"
+        Title="Optag ydelse" Width="900" Height="640" MinWidth="560" MinHeight="420" WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="12">
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="Tryk Start, skift til spillet (eller det der driller) og brug PC'en som normalt. Kom tilbage og tryk Stop. Optagelsen stopper selv efter 15 minutter. Den måler CPU, grafikkort (GPU), RAM og disk cirka én gang i sekundet; skærmen optages ikke."/>
+
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="0,0,0,8">
+            <Button Grid.Column="0" x:Name="StartButton" Content="Start optagelse" MinWidth="120"/>
+            <Button Grid.Column="1" x:Name="StopButton" Content="Stop" MinWidth="80" Margin="8,0,0,0" IsEnabled="False"/>
+            <TextBlock Grid.Column="2" x:Name="ElapsedText" VerticalAlignment="Center" Margin="12,0,0,0" FontWeight="SemiBold"/>
+            <TextBlock Grid.Column="4" Text="Optagelser:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox Grid.Column="5" x:Name="RecordingBox" Width="200"/>
+        </Grid>
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="16" Margin="0,0,0,4">
+            <StackPanel Orientation="Horizontal" Spacing="4"><Border Width="14" Height="4" Background="{x:Static app:PerfChart.CpuBrush}" VerticalAlignment="Center"/><TextBlock Text="CPU"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="4"><Border Width="14" Height="4" Background="{x:Static app:PerfChart.GpuBrush}" VerticalAlignment="Center"/><TextBlock Text="Grafikkort (GPU)"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="4"><Border Width="14" Height="4" Background="{x:Static app:PerfChart.RamBrush}" VerticalAlignment="Center"/><TextBlock Text="RAM"/></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="4"><Border Width="14" Height="4" Background="{x:Static app:PerfChart.DiskBrush}" VerticalAlignment="Center"/><TextBlock Text="Disk"/></StackPanel>
+        </StackPanel>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <Button DockPanel.Dock="Right" x:Name="AskButton" Content="Spørg PC Doctor om optagelsen" IsEnabled="False" VerticalAlignment="Bottom"/>
+            <SelectableTextBlock x:Name="SummaryText" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12" Margin="0,0,12,0"/>
+        </DockPanel>
+
+        <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="4">
+            <app:PerfChart x:Name="Chart"/>
+        </Border>
+    </DockPanel>
+</Window>

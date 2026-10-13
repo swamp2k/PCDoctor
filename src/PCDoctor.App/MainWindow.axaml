@@ -1,0 +1,93 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:PCDoctor.Core"
+        xmlns:app="using:PCDoctor.App"
+        x:Class="PCDoctor.App.MainWindow"
+        Title="PC Doctor" Width="1150" Height="760" MinWidth="760" MinHeight="480">
+    <DockPanel Margin="12">
+
+        <!-- Top bar: mode selector and settings -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="0,0,0,8">
+            <TextBlock Grid.Column="0" Text="PC Doctor" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
+                <ComboBox x:Name="LanguageBox" ToolTip.Tip="Sproget PC Doctor svarer på" Margin="0,0,8,0"/>
+                <TextBlock Text="Tilstand:" VerticalAlignment="Center"/>
+                <ComboBox x:Name="ModeBox" Width="150" SelectedIndex="0">
+                    <ComboBoxItem Content="Read-only"/>
+                    <ComboBoxItem Content="Assisted"/>
+                    <ComboBoxItem Content="YOLO"/>
+                </ComboBox>
+            </StackPanel>
+            <Button Grid.Column="3" x:Name="RecordButton" Content="Optag ydelse" Margin="0,0,8,0"/>
+            <Button Grid.Column="4" x:Name="NewChatButton" Content="Ny samtale" Margin="0,0,8,0"/>
+            <Button Grid.Column="5" x:Name="SettingsButton" Content="Indstillinger"/>
+        </Grid>
+
+        <Border DockPanel.Dock="Top" x:Name="ModeBanner" CornerRadius="4" Padding="10,6" Margin="0,0,0,8">
+            <TextBlock x:Name="ModeText" TextWrapping="Wrap"/>
+        </Border>
+
+        <Border DockPanel.Dock="Top" x:Name="KeyBanner" Background="#33FFA500" CornerRadius="4" Padding="10,6" Margin="0,0,0,8" IsVisible="False">
+            <TextBlock TextWrapping="Wrap" Text="Der er ingen Anthropic API-nøgle endnu. Åbn Indstillinger og indsæt nøglen én gang; den gemmes i Windows Credential Manager."/>
+        </Border>
+
+        <!-- Input row -->
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+            <TextBox Grid.Column="0" x:Name="InputBox" PlaceholderText="Beskriv problemet, fx 'Hvorfor crasher Minecraft?' (Enter for at sende)"
+                     AcceptsReturn="False" TextWrapping="Wrap" MaxHeight="120"/>
+            <Button Grid.Column="1" x:Name="SendButton" Content="Start" Margin="8,0,0,0" MinWidth="80"/>
+            <Button Grid.Column="2" x:Name="StopButton" Content="Stop" Margin="8,0,0,0" MinWidth="80" IsEnabled="False"/>
+        </Grid>
+
+        <TextBlock DockPanel.Dock="Bottom" x:Name="StatusText" Margin="0,6,0,0" Opacity="0.7"/>
+
+        <!-- Chat (left) and activity log (right) -->
+        <Grid ColumnDefinitions="3*,6,2*">
+            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+                <ScrollViewer x:Name="ChatScroll">
+                    <ItemsControl x:Name="ChatList" Margin="8">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="app:ChatItem">
+                                <Border Background="{Binding Background}" CornerRadius="6" Padding="10,8" Margin="0,4">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Who}" FontWeight="SemiBold" Opacity="0.8"/>
+                                        <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns"/>
+
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Text="Aktivitet (klik for detaljer)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <Button DockPanel.Dock="Bottom" x:Name="ShowRequestButton" Content="Vis seneste API-forespørgsel" Margin="0,6,0,0" HorizontalAlignment="Stretch"/>
+                <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
+                    <ScrollViewer x:Name="ActivityScroll">
+                        <ItemsControl x:Name="ActivityList" Margin="4">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="app:ActivityItem">
+                                    <Expander HorizontalAlignment="Stretch" Margin="0,2" IsEnabled="{Binding HasDetail}">
+                                        <Expander.Header>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="{Binding TimeText}" Foreground="Gray"/>
+                                                <Run Text=" "/>
+                                                <Run Text="{Binding Icon}"/>
+                                                <Run Text=" "/>
+                                                <Run Text="{Binding Title}"/>
+                                            </TextBlock>
+                                        </Expander.Header>
+                                        <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+                                    </Expander>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

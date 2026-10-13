@@ -1,0 +1,32 @@
+name: Build and test (Windows)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run tests (including the Windows-only ones)
+        run: dotnet test PCDoctor.sln --configuration Release --logger "console;verbosity=normal"
+
+      - name: Build PCDoctor.exe
+        run: >
+          dotnet publish src/PCDoctor.App/PCDoctor.App.csproj
+          --configuration Release --runtime win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          --output publish
+
+      - name: Upload PCDoctor.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: PCDoctor-win-x64
+          path: publish/PCDoctor.exe

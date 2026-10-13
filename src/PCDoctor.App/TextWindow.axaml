@@ -1,0 +1,7 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PCDoctor.App.TextWindow"
+        Width="900" Height="640" WindowStartupLocation="CenterOwner">
+    <TextBox x:Name="Body" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Margin="12"
+             FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+</Window>

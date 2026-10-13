@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>PCDoctor</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PCDoctor.Core\PCDoctor.Core.csproj" />
+    <ProjectReference Include="..\PCDoctor.Agent\PCDoctor.Agent.csproj" />
+    <ProjectReference Include="..\PCDoctor.Diagnostics\PCDoctor.Diagnostics.csproj" />
+    <ProjectReference Include="..\PCDoctor.Platform.Windows\PCDoctor.Platform.Windows.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PCDoctor.App.SettingsWindow"
+        Title="Indstillinger" Width="620" Height="560" WindowStartupLocation="CenterOwner">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="10">
+            <TextBlock Text="Anthropic API-nøgle" FontWeight="SemiBold" FontSize="16"/>
+            <TextBlock TextWrapping="Wrap" Opacity="0.8"
+                       Text="Indsæt nøglen én gang. Den gemmes i Windows Credential Manager for din Windows-bruger og bruges automatisk derefter. Den gemmes aldrig i programfilen."/>
+            <TextBlock x:Name="KeyStatus"/>
+            <TextBox x:Name="KeyBox" PasswordChar="•" PlaceholderText="sk-ant-…"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="SaveKeyButton" Content="Gem nøgle"/>
+                <Button x:Name="TestButton" Content="Test forbindelse"/>
+                <Button x:Name="RemoveKeyButton" Content="Fjern nøgle"/>
+            </StackPanel>
+            <TextBlock x:Name="TestResult" TextWrapping="Wrap"/>
+
+            <Separator Margin="0,8"/>
+            <TextBlock Text="Model" FontWeight="SemiBold" FontSize="16"/>
+            <TextBlock x:Name="ModelInfo" TextWrapping="Wrap" Opacity="0.8"/>
+
+            <Separator Margin="0,8"/>
+            <TextBlock Text="Grænser" FontWeight="SemiBold" FontSize="16"/>
+            <Grid ColumnDefinitions="*,140" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8">
+                <TextBlock Grid.Row="0" Text="Maks. runder pr. spørgsmål" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="0" Grid.Column="1" x:Name="IterationsBox" Minimum="1" Maximum="200" FormatString="0"/>
+                <TextBlock Grid.Row="1" Text="Standard-tidsgrænse for kommando (sek.)" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="1" Grid.Column="1" x:Name="TimeoutBox" Minimum="5" Maximum="3600" FormatString="0"/>
+                <TextBlock Grid.Row="2" Text="Maks. tidsgrænse agenten må bede om (sek.)" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="2" Grid.Column="1" x:Name="MaxTimeoutBox" Minimum="5" Maximum="7200" FormatString="0"/>
+                <TextBlock Grid.Row="3" Text="Maks. tegn output sendt til modellen" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="3" Grid.Column="1" x:Name="OutputBox" Minimum="1000" Maximum="200000" Increment="1000" FormatString="0"/>
+            </Grid>
+            <Button x:Name="SaveLimitsButton" Content="Gem grænser" HorizontalAlignment="Left"/>
+            <TextBlock x:Name="LimitsResult"/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

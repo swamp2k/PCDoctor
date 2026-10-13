@@ -70,6 +70,17 @@ public sealed class PerformanceTests : IDisposable
     }
 
     [Fact]
+    public async Task Cap_still_applies_when_every_reading_fails()
+    {
+        var sampler = new FakeSampler(_ => throw new InvalidOperationException("counter gone"));
+        var recorder = new PerfRecorder(sampler, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(100));
+        var r = await recorder.RunAsync(_ => { }, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal("limit", r.StopReason);
+        Assert.Empty(r.Samples);
+    }
+
+    [Fact]
     public void Summary_has_averages_peaks_and_time_above_90()
     {
         var r = new PerfRecording

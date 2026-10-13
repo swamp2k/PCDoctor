@@ -24,10 +24,11 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
 
     public PerfSample Read()
     {
-        double cpu = _cpu is null ? 0 : Clamp(_cpu.NextValue());
         double? disk = _diskIdle is null ? null : Clamp(100 - _diskIdle.NextValue());
         var (ramPct, ramUsedGb) = Memory();
-        var (topName, topCpu) = TopProcess();
+        var (topName, topCpu, allCpu) = TopProcess();
+        // If the CPU counter is unavailable (e.g. renamed on a localized Windows), add up all processes instead.
+        double cpu = _cpu is null ? allCpu : Clamp(_cpu.NextValue());
         return new PerfSample(0, Math.Round(cpu, 1), Gpu(), ramPct, ramUsedGb, disk is null ? null : Math.Round(disk.Value, 1), topName, topCpu);
     }
 
@@ -62,13 +63,13 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
         }
     }
 
-    (string? Name, double Cpu) TopProcess()
+    (string? Name, double Cpu, double AllCpu) TopProcess()
     {
         long nowTicks = Stopwatch.GetTimestamp();
         double wallMs = Stopwatch.GetElapsedTime(_procPrevTicks, nowTicks).TotalMilliseconds;
         var now = new Dictionary<int, (string Name, double CpuMs)>();
         string? best = null;
-        double bestCpu = 0;
+        double bestCpu = 0, all = 0;
         foreach (Process p in Process.GetProcesses())
         {
             using (p)
@@ -81,6 +82,7 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
                     if (wallMs > 0 && _procPrev.TryGetValue(p.Id, out var before))
                     {
                         double pct = (ms - before.CpuMs) / wallMs / Environment.ProcessorCount * 100;
+                        all += Math.Max(0, pct);
                         if (pct > bestCpu) (best, bestCpu) = (p.ProcessName, pct);
                     }
                 }
@@ -89,7 +91,7 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
         }
         _procPrev = now;
         _procPrevTicks = nowTicks;
-        return (best, Math.Round(Clamp(bestCpu), 1));
+        return (best, Math.Round(Clamp(bestCpu), 1), Math.Round(Clamp(all), 1));
     }
 
     static (double Percent, double UsedGb) Memory()

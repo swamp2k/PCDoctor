@@ -75,11 +75,13 @@ public sealed class PerfRecorder
         {
             while (await timer.WaitForNextTickAsync(ct))
             {
-                PerfSample sample;
-                try { sample = _sampler.Read() with { Seconds = Math.Round(clock.Elapsed.TotalSeconds, 1) }; }
-                catch (Exception) { continue; } // one failed reading must not end the recording
-                recording.Samples.Add(sample);
-                onSample(sample);
+                try
+                {
+                    PerfSample sample = _sampler.Read() with { Seconds = Math.Round(clock.Elapsed.TotalSeconds, 1) };
+                    recording.Samples.Add(sample);
+                    onSample(sample);
+                }
+                catch (Exception) { /* one failed reading must not end the recording */ }
                 if (recording.Samples.Count >= maxSamples || clock.Elapsed >= _max)
                 {
                     recording.StopReason = "limit";

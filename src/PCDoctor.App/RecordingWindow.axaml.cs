@@ -70,9 +70,14 @@ public partial class RecordingWindow : Window
         _recording = Task.Run(async () =>
         {
             PerfRecording r = await recorder.RunAsync(s => Dispatcher.UIThread.Post(() => OnSample(s)), ct);
-            if (r.Samples.Count > 0)
-                _store.Save(r);
-            Dispatcher.UIThread.Post(() => OnFinished(r));
+            string? saveError = null;
+            try
+            {
+                if (r.Samples.Count > 0)
+                    _store.Save(r);
+            }
+            catch (Exception e) { saveError = e.Message; }
+            Dispatcher.UIThread.Post(() => OnFinished(r, saveError));
         });
     }
 
@@ -83,7 +88,7 @@ public partial class RecordingWindow : Window
         ElapsedText.Text = $"Optager… {Time(s.Seconds)} / {Max}";
     }
 
-    void OnFinished(PerfRecording r)
+    void OnFinished(PerfRecording r, string? saveError)
     {
         _stop?.Dispose();
         _stop = null;
@@ -92,6 +97,13 @@ public partial class RecordingWindow : Window
         if (r.Samples.Count == 0)
         {
             ElapsedText.Text = "Intet optaget.";
+            return;
+        }
+        if (saveError is not null)
+        {
+            // Still show it, it just is not kept for later.
+            ElapsedText.Text = $"Kunne ikke gemme optagelsen: {saveError}";
+            Display(r);
             return;
         }
         ElapsedText.Text = r.StopReason == "limit" ? "Stoppet ved 15 minutter." : "Optagelse gemt.";

@@ -20,5 +20,6 @@
     <ProjectReference Include="..\..\src\PCDoctor.Agent\PCDoctor.Agent.csproj" />
     <ProjectReference Include="..\..\src\PCDoctor.Diagnostics\PCDoctor.Diagnostics.csproj" />
     <ProjectReference Include="..\..\src\PCDoctor.Platform.Windows\PCDoctor.Platform.Windows.csproj" />
+    <ProjectReference Include="..\..\src\PCDoctor.Storage\PCDoctor.Storage.csproj" />
   </ItemGroup>
 </Project>

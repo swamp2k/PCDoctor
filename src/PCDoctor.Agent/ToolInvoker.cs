@@ -55,6 +55,7 @@ public sealed class ToolInvoker
                         report(new AgentEvent(AgentEventKind.ToolDenied, "Shell-kommando afvist af brugeren", request.Command));
                         return ToolResult.Error("The user declined this command. It was not run. Do not ask to run the same command again.");
                     }
+                    report(new AgentEvent(AgentEventKind.Info, "Shell-kommando godkendt af brugeren", request.Command));
                     break;
 
                 case PermissionMode.Yolo:

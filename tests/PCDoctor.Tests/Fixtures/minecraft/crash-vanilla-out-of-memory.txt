@@ -1,0 +1,32 @@
+---- Minecraft Crash Report ----
+// Don't do that.
+
+Time: 2026-10-11 19:42:03
+Description: Unexpected error
+
+java.lang.OutOfMemoryError: Java heap space
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3537)
+	at net.minecraft.client.renderer.chunk.ChunkRenderDispatcher.uploadChunkLayer(ChunkRenderDispatcher.java:212)
+	at net.minecraft.client.renderer.LevelRenderer.compileChunks(LevelRenderer.java:1491)
+	at net.minecraft.client.Minecraft.runTick(Minecraft.java:1143)
+
+
+A detailed walkthrough of the error, its code path and all known details is as follows:
+---------------------------------------------------------------------------------------
+
+-- Head --
+Thread: Render thread
+Stacktrace:
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3537)
+
+-- System Details --
+Details:
+	Minecraft Version: 1.21.1
+	Minecraft Version ID: 1.21.1
+	Operating System: Windows 10 (amd64) version 10.0
+	Java Version: 21.0.3, Microsoft
+	Memory: 2061238272 bytes (1965 MiB) / 2147483648 bytes (2048 MiB) up to 2147483648 bytes (2048 MiB)
+	JVM Flags: 2 total; -Xmx2G -Xms2G
+	Graphics card #0 name: Intel(R) UHD Graphics 620
+	Launched Version: 1.21.1
+	Crash Report UUID: 0b9d4e7a-0000-4000-8000-000000000001

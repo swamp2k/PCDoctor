@@ -1,0 +1,44 @@
+[
+  {
+    "file": "minecraft/crash-forge-suspected-mod.txt",
+    "parser": "crash_report",
+    "outcome": "Forge names one mod as the suspect (Better Pets).",
+    "contains": ["\"Description\":\"Ticking entity\"", "Better Pets (betterpets), Version: 1.4.2", "NullPointerException"],
+    "absent": ["Issue tracker URL"]
+  },
+  {
+    "file": "minecraft/crash-fabric-mixin.txt",
+    "parser": "crash_report",
+    "outcome": "Fabric names no suspect, but the mod that owns the broken mixin is in the stack.",
+    "contains": ["\"SuspectedMods\":[]", "fancysky", "InjectionError"],
+    "absent": []
+  },
+  {
+    "file": "minecraft/crash-vanilla-out-of-memory.txt",
+    "parser": "crash_report",
+    "outcome": "Vanilla game ran out of memory (2 GB). No mod to blame.",
+    "contains": ["OutOfMemoryError: Java heap space", "\"SuspectedMods\":[]", "\"ModsInStack\":[]", "-Xmx2G"],
+    "absent": []
+  },
+  {
+    "file": "minecraft/hs_err_pid1234.log",
+    "parser": "jvm_crash",
+    "outcome": "Java crashed inside the AMD graphics driver.",
+    "contains": ["\"GraphicsDriverSuspected\":true", "atio6axx.dll"],
+    "absent": []
+  },
+  {
+    "file": "minecraft/hs_err_pid4321_nvidia.log",
+    "parser": "jvm_crash",
+    "outcome": "Java crashed inside the NVIDIA graphics driver.",
+    "contains": ["\"GraphicsDriverSuspected\":true", "nvoglv64.dll", "21.0.3"],
+    "absent": []
+  },
+  {
+    "file": "minecraft/latest.log",
+    "parser": "latest_log",
+    "outcome": "latest.log keeps the problem lines and the last lines.",
+    "contains": ["\"problem_line_count\":3", "Stopping!"],
+    "absent": []
+  }
+]

@@ -2,6 +2,7 @@ using System.Text.Json;
 using PCDoctor.Core;
 using PCDoctor.Diagnostics;
 using PCDoctor.Platform.Windows;
+using PCDoctor.Storage;
 
 namespace PCDoctor.App;
 
@@ -33,6 +34,19 @@ static class Services
 
     public static ISecretStore CreateSecretStore() =>
         OperatingSystem.IsWindows() ? new CredentialManagerStore() : new EnvironmentSecretStore();
+
+    /// <summary>Opens the conversation history and keeps the newest 100 conversations. Null if it cannot be opened.</summary>
+    public static SessionStore? OpenHistory()
+    {
+        try
+        {
+            var secrets = CreateSecretStore();
+            var store = new SessionStore(SessionStore.DefaultFile, secrets.Read);
+            store.Prune(keep: 100);
+            return store;
+        }
+        catch (Exception) { return null; }
+    }
 
     static string SettingsFile => Path.Combine(AppPaths.DataDir, "settings.json");
 

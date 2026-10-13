@@ -46,6 +46,14 @@ Each tab runs the same built-in tools the agent uses, directly, and shows the re
 It needs no API key, makes no AI call, and changes nothing on the PC. "Vis rådata" shows exactly what the agent
 would see, and **Spørg PC Doctor om dette** hands the topic to the agent in the main window.
 
+## History
+
+**Historik** lists earlier conversations, newest first. Pick one to see the questions and answers (**Samtale**),
+every check PC Doctor ran with its input and result (**Aktivitet**), and, for troubleshooting, exactly what was sent
+to the AI and what came back (**API-forespørgsler**). **Om samtalen** shows the model, language, mode, settings and
+a short description of the PC. The API key and anything that looks like a password or key are replaced by `[skjult]`
+before anything is saved. The newest 100 conversations are kept; **Slet samtalen** deletes one.
+
 ## Built-in tools
 
 | Tool | What it does |
@@ -65,7 +73,8 @@ would see, and **Spørg PC Doctor om dette** hands the topic to the agent in the
 
 Everything stays on the PC, in `%LOCALAPPDATA%\PCDoctor`:
 
-- `sessions\` one log file per conversation: questions, tool calls, commands, output and answers.
+- `history.db` the conversation history (SQLite): questions, tool calls, commands, results, answers, approvals
+  and the API requests and responses, with secrets masked. Newest 100 conversations.
 - `outputs\` full output of commands whose output was too long to send to the model.
 - `recordings\` performance recordings (newest 20).
 - `settings.json` limits (rounds per question, time limits, output size). No secrets.
@@ -78,10 +87,14 @@ src/PCDoctor.Agent             agent loop, permission check, Anthropic API adapt
 src/PCDoctor.Diagnostics       cross-platform tools and analysis (processes, resources, network, Minecraft logs,
                                event grouping, plain-Danish reports for the Diagnostics page)
 src/PCDoctor.Platform.Windows  WMI hardware, Event Log, performance counters, PowerShell, Credential Manager
+src/PCDoctor.Storage           SQLite conversation history
 src/PCDoctor.App               Avalonia window
 tests/PCDoctor.Tests           xUnit tests
 ```
 
 Build and test: `dotnet test` (needs the .NET 10 SDK). Windows-only tests are skipped on other systems.
+Crash-log fixtures with their known outcomes are listed in `tests/PCDoctor.Tests/Fixtures/known-outcomes.json`;
+add a file and a line there to add a regression case. One test runs the real Claude Haiku 5.5 against a crash fixture;
+it is skipped unless `PCDOCTOR_LIVE_TEST_KEY` holds an API key.
 Every model tool call goes through `ToolInvoker`, the single place where the mode is checked;
 nothing else starts a process for the model.

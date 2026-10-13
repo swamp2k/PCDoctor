@@ -9,6 +9,16 @@ public sealed class ChatItem
     public required string Who { get; init; }
     public required string Text { get; init; }
     public required IBrush Background { get; init; }
+
+    /// <summary>The chat bubble for an activity event, or null if the event is not shown in the chat.</summary>
+    public static ChatItem? FromEvent(AgentEvent e) => e.Kind switch
+    {
+        AgentEventKind.UserMessage => new() { Who = "Dig", Text = e.Title, Background = Brush.Parse("#223399FF") },
+        AgentEventKind.AssistantMessage => new() { Who = "PC Doctor", Text = e.Title, Background = Brush.Parse("#2200A86B") },
+        AgentEventKind.Error => new() { Who = "Fejl", Text = e.Detail is null ? e.Title : $"{e.Title}\n\n{e.Detail}", Background = Brush.Parse("#33FF0000") },
+        AgentEventKind.Info when e.Title.StartsWith("Stoppet") => new() { Who = "PC Doctor", Text = e.Title, Background = Brush.Parse("#22808080") },
+        _ => null,
+    };
 }
 
 /// <summary>One line in the activity log.</summary>
@@ -36,4 +46,25 @@ public sealed class ActivityItem
     public string Title { get; }
     public string Detail { get; }
     public bool HasDetail => Detail.Length > 0;
+}
+
+/// <summary>One conversation in the history list.</summary>
+public sealed class SessionListItem(PCDoctor.Storage.SessionSummary s)
+{
+    public long Id { get; } = s.Id;
+    public string Title { get; } = s.Title;
+    public string Subtitle { get; } =
+        $"{s.Started.LocalDateTime:dd-MM-yyyy HH:mm} · {s.ToolCalls} værktøjskald · {s.ApiCalls} API-kald{(s.HadError ? " · ⚠ fejl" : "")}";
+}
+
+/// <summary>One API call in the history's technical view.</summary>
+public sealed class ApiCallItem(PCDoctor.Storage.ApiCallSummary c, int number)
+{
+    public long Id { get; } = c.Id;
+    public bool HasResponse { get; } = c.ResponseChars > 0;
+    public string Text { get; } =
+        $"#{number}  {c.Time.LocalDateTime:HH:mm:ss}  {c.Seconds:0.0} s  ·  sendt {Size(c.RequestChars)}" +
+        (c.Error is null ? $", modtaget {Size(c.ResponseChars)}" : $"  ·  ⚠ {c.Error}");
+
+    static string Size(int chars) => chars < 1024 ? $"{chars} tegn" : $"{chars / 1024.0:0.#} K tegn";
 }

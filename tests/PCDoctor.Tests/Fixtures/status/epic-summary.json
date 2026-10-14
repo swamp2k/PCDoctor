@@ -1,0 +1,18 @@
+{
+  "page": {"id": "x", "name": "Epic Games", "url": "https://status.epicgames.com"},
+  "status": {"indicator": "major", "description": "Partial System Outage"},
+  "components": [
+    {"id": "g1", "name": "Fortnite", "status": "major_outage", "group_id": null, "group": true},
+    {"id": "c1", "name": "Login", "status": "major_outage", "group_id": "g1", "group": false},
+    {"id": "c2", "name": "Matchmaking", "status": "degraded_performance", "group_id": "g1", "group": false},
+    {"id": "c3", "name": "Parties, Friends, and Messaging", "status": "operational", "group_id": "g1", "group": false},
+    {"id": "g2", "name": "Rocket League", "status": "operational", "group_id": null, "group": true},
+    {"id": "c4", "name": "Game Services", "status": "operational", "group_id": "g2", "group": false}
+  ],
+  "incidents": [
+    {"name": "Fortnite login issues", "status": "investigating", "impact": "major", "updated_at": "2026-10-14T08:00:00Z",
+     "components": [{"id": "c1", "name": "Login", "status": "major_outage", "group_id": "g1"}],
+     "incident_updates": [{"body": "We are investigating reports of players being unable to log in."}]}
+  ],
+  "scheduled_maintenances": []
+}

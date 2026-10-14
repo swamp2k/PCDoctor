@@ -22,6 +22,10 @@ static class Services
         tools.Add(new DnsTool());
         tools.Add(new TcpTool());
         tools.Add(new GamingLogsTool());
+        tools.Add(new MinecraftModsTool());
+        tools.Add(new OtherGameLogsTool());
+        tools.Add(new ServiceStatusTool());
+        tools.Add(new GameRequirementsTool());
         tools.Add(new PerformanceRecordingTool(new PerfRecordingStore()));
         if (OperatingSystem.IsWindows())
             tools.Add(new PowerShellTool(settings));

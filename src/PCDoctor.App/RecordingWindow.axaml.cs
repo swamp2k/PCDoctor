@@ -158,8 +158,19 @@ public partial class RecordingWindow : Window
         b.AppendLine(Line("GPU ", s.Gpu));
         b.AppendLine(Line("RAM ", s.Ram) + $" (højst {s.MaxRamUsedGb:0.0} GB i brug)");
         b.AppendLine(Line("Disk", s.Disk));
+        if (s.CpuSpeed is { } speed)
+            b.AppendLine($"CPU-hastighed: gennemsnit {speed.Average:0} % af normal, laveste {speed.Min:0} %" +
+                         (speed.SlowedPercentOfBusyTime >= 20 ? $" (sat ned i {speed.SlowedPercentOfBusyTime:0} % af tiden den havde travlt: varme eller strømsparing?)" : ""));
+        if (s.MaxGpuMemoryGb is { } vram)
+            b.AppendLine($"Grafikhukommelse (VRAM): højst {vram:0.0} GB i brug");
+        if (s.Ping is { } ping)
+            b.AppendLine(ping.LostPercent >= 100
+                ? "Internet-ping: intet svar (netværket blokerer måske ping)"
+                : $"Internet-ping: gennemsnit {ping.AverageMs:0} ms, højst {ping.MaxMs:0} ms, {ping.Spikes} lag-spidser over 150 ms, {ping.LostPercent:0.#} % tabt");
         if (s.TopProcesses.Count > 0)
-            b.Append("Brugte mest CPU: " + string.Join(", ", s.TopProcesses.Select(p => $"{p.Name} ({p.PercentOfTime:0} % af tiden)")));
+            b.AppendLine("Brugte mest CPU: " + string.Join(", ", s.TopProcesses.Select(p => $"{p.Name} ({p.PercentOfTime:0} % af tiden)")));
+        if (s.TopGpuProcesses is { Count: > 0 } gpu)
+            b.AppendLine("Brugte mest grafikkort: " + string.Join(", ", gpu.Select(p => $"{p.Name} ({p.PercentOfTime:0} % af tiden)")));
         return b.ToString().TrimEnd();
     }
 

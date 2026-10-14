@@ -1,0 +1,8 @@
+Mono path[0] = 'C:/Games/Cozy/Cozy_Data/Managed'
+Initialize engine version: 2022.3.20f1
+Direct3D:
+    Version:  Direct3D 11.0 [level 11.1]
+    Renderer: Intel(R) UHD Graphics 620
+Could not allocate memory: System out of memory!
+Trying to allocate: 268435456B with 16 alignment. MemoryLabel: Texture
+Crash!!!

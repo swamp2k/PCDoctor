@@ -13,7 +13,8 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
     public string Name => "performance_recording";
     public string Description =>
         "Read a performance recording the user made with PC Doctor's Record button (for example while playing a game). " +
-        "It sampled CPU, GPU, RAM and disk use about once a second, for up to 15 minutes, plus which program used most CPU. " +
+        "It sampled CPU, GPU, RAM and disk use about once a second, for up to 15 minutes, plus which program used most CPU and most GPU, " +
+        "processor speed (to spot overheating or power saving), graphics memory (VRAM) in use, and a ping to the internet (to spot lag). " +
         "Returns a summary, a timeline (average and peak per time slice) and the list of other recordings. " +
         "Without an id it returns the newest recording.";
     public ToolKind Kind => ToolKind.ReadOnly;
@@ -47,7 +48,11 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
             recordings = ids,
             note = "Percentages are 0-100 for the whole machine. gpu/disk are null if Windows had no counter for them. " +
                    "PercentOfTimeAbove90 is how much of the recording that part was at 90 % or more, which suggests a bottleneck. " +
-                   "TopProcesses lists which program used the most CPU, and in how much of the recording.",
+                   "TopProcesses lists which program used the most CPU, and in how much of the recording; TopGpuProcesses the same for the graphics card. " +
+                   "CpuSpeed is % of the processor's normal speed: over 100 is boosting; SlowedPercentOfBusyTime high means the processor was slowed " +
+                   "while busy (overheating, laptop on battery, or power-saving plan). MaxGpuMemoryGb near the card's VRAM size means it ran out of " +
+                   "graphics memory (compare with system_hardware). Ping: Spikes are pings over 150 ms (felt as lag); if LostPercent is 100 the network " +
+                   "may just block ping. Fields are null in recordings made before these measurements existed.",
         }));
     }
 
@@ -68,6 +73,10 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
             gpu_max = Max(c.Select(x => x.Gpu)),
             ram_avg = Avg(c.Select(x => (double?)x.Ram)),
             disk_max = Max(c.Select(x => x.Disk)),
+            cpu_speed_min = Min(c.Select(x => x.CpuSpeed)),
+            gpu_mem_gb_max = Max(c.Select(x => x.GpuMemoryGb)),
+            ping_max_ms = Max(c.Select(x => x.PingMs)),
+            pings_lost = c.Any(x => x.PingLost) ? c.Count(x => x.PingLost) : (int?)null,
             top_process = c.Where(x => x.TopProcess is not null).GroupBy(x => x.TopProcess).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key,
         }).ToList();
     }
@@ -76,6 +85,12 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
     {
         var l = v.Where(x => x.HasValue).ToList();
         return l.Count == 0 ? null : Math.Round(l.Average(x => x!.Value), 1);
+    }
+
+    static double? Min(IEnumerable<double?> v)
+    {
+        var l = v.Where(x => x.HasValue).ToList();
+        return l.Count == 0 ? null : Math.Round(l.Min(x => x!.Value), 1);
     }
 
     static double? Max(IEnumerable<double?> v)

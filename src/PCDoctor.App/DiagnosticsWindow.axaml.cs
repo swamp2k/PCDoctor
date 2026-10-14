@@ -72,13 +72,31 @@ public partial class DiagnosticsWindow : Window
                 },
                 "Kig på fejlene i Windows' hændelseslog fra de sidste 7 dage. Er der noget alvorligt, og hvad betyder det?"),
 
-            new("Minecraft", "Finder Minecraft (officiel launcher, CurseForge, Prism, Modrinth m.fl.) og læser den nyeste crash-rapport.",
+            new("Minecraft", "Finder Minecraft (officiel launcher, CurseForge, Prism, Modrinth m.fl.), læser den nyeste crash-rapport og tjekker mods: mangler der nogen, er der dubletter, eller passer de ikke til loaderen?",
                 async ct =>
                 {
-                    var r = await Tool("gaming_logs", "{}", ct);
-                    return (PlainReport.Minecraft(r), Raw(r));
+                    var logs = Tool("gaming_logs", "{}", ct);
+                    var mods = Tool("minecraft_mods", "{}", ct);
+                    var (r, m) = (await logs, await mods);
+                    return (PlainReport.Minecraft(r) + "\n\n" + PlainReport.Mods(m), Raw(r) + "\n\n" + Raw(m));
                 },
-                "Hvorfor crashede Minecraft senest? Kig i crash-rapporterne og Windows' hændelseslog omkring tidspunktet."),
+                "Hvorfor crashede Minecraft senest? Kig i crash-rapporterne, mine mods og Windows' hændelseslog omkring tidspunktet."),
+
+            new("Andre spil", "Finder logfiler fra Fortnite, Roblox, Rocket League og andre Unreal- og Unity-spil, og læser den nyeste for faresignaler.",
+                async ct =>
+                {
+                    var r = await Tool("other_game_logs", "{}", ct);
+                    return (PlainReport.OtherGames(r), Raw(r));
+                },
+                "Kig i logfilerne fra de spil jeg har spillet for nylig. Er der tegn på, hvorfor de crasher eller hakker?"),
+
+            new("Spiltjenester", "Er spillet nede, eller er det vores internet? Læser de officielle statussider (Epic Games/Fortnite, Discord) og tester, om PC'en kan nå spillenes servere. Tager ca. 10 sekunder.",
+                async ct =>
+                {
+                    var r = await Tool("service_status", "{}", ct);
+                    return (PlainReport.Services(r), Raw(r));
+                },
+                "Er der nogen af mine spil eller Discord, der er nede lige nu, eller er det min internetforbindelse?"),
         ];
 
         foreach (var check in checks)

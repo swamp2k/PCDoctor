@@ -170,6 +170,15 @@ public sealed class PerformanceTests : IDisposable
         Assert.True(s.RamUsedGb > 0);
         if (s.Gpu is { } gpu) Assert.InRange(gpu, 0, 100);
         if (s.Disk is { } disk) Assert.InRange(disk, 0, 100);
+        if (s.CpuSpeed is { } speed) Assert.InRange(speed, 1, 400);
+        if (s.GpuMemoryGb is { } vram) Assert.True(vram >= 0);
+        // A ping is answered (or lost) by a later read; it times out after one second.
+        for (int i = 0; i < 3 && s.PingMs is null && !s.PingLost; i++)
+        {
+            Thread.Sleep(1200);
+            s = sampler.Read();
+        }
+        Assert.True(s.PingMs is not null || s.PingLost);
     }
 }
 

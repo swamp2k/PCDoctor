@@ -301,6 +301,7 @@ public class KnownOutcomeFixtureTests
             "crash_report" => MinecraftCrashReport.Parse(text),
             "jvm_crash" => JvmCrashLog.Parse(text),
             "latest_log" => MinecraftLatestLog.Parse(text),
+            "unreal" or "unity" or "roblox" => GameLog.Parse(text, c.GetProperty("parser").GetString()!),
             var p => throw new InvalidOperationException($"Unknown parser {p}"),
         };
         string json = JsonSerializer.Serialize(parsed, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
@@ -313,12 +314,13 @@ public class KnownOutcomeFixtureTests
     }
 
     [Fact]
-    public void Every_minecraft_fixture_has_a_known_outcome()
+    public void Every_log_fixture_has_a_known_outcome()
     {
         var listed = JsonDocument.Parse(Fixture.Text("known-outcomes.json")).RootElement.EnumerateArray()
             .Select(c => c.GetProperty("file").GetString()).ToHashSet();
-        foreach (string f in Directory.GetFiles(Fixture.Path("minecraft")))
-            Assert.Contains($"minecraft/{Path.GetFileName(f)}", listed);
+        foreach (string folder in new[] { "minecraft", "games" })
+            foreach (string f in Directory.GetFiles(Fixture.Path(folder)))
+                Assert.Contains($"{folder}/{Path.GetFileName(f)}", listed);
     }
 }
 

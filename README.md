@@ -35,15 +35,33 @@ nothing else needs to be installed.
 ## Recording performance
 
 **Optag ydelse** opens the recorder. Press Start, play the game (or do whatever is slow), come back and press Stop.
-It stops by itself after 15 minutes. About once a second it notes CPU, graphics card (GPU), RAM and disk use, and which
-program used the most CPU. The screen is not recorded. Afterwards you see a chart and a summary, and
+It stops by itself after 15 minutes. About once a second it notes CPU, graphics card (GPU), RAM and disk use, which
+programs used the CPU and the graphics card most, the processor's speed (it slows down when it gets too hot or saves power),
+how much graphics memory (VRAM) is in use, and a ping to the internet (1.1.1.1) to catch lag spikes. The screen is not recorded. Afterwards you see a chart and a summary, and
 **Spørg PC Doctor om optagelsen** asks the agent what held the PC back. The newest 20 recordings are kept.
+
+## Why does my game stutter?
+
+**Hvorfor hakker mit spil?** is the one-button version of the recorder. Start the game, pick it in the list, press Start,
+play until it stutters, then come back and press Stop. Besides the whole PC it follows the game itself (its own CPU,
+graphics card and RAM use). With **Mål også FPS** ticked it also measures frames per second: average, best and worst
+second, 1 % and 0.1 % lows, and visible hitches. When you press Stop, PC Doctor is asked automatically what held the game back.
+
+FPS is measured the way PresentMon and FPS overlays do it: Windows notes every frame the game shows (an ETW event), and
+PC Doctor counts the chosen game's frames. Windows only gives this to programs with administrator rights. That is why
+Windows asks "Do you want to allow this app to make changes?" when you press Start. Only a small, windowless copy of
+PCDoctor.exe that does nothing but count frames runs as administrator, and it stops when you press Stop, after 16 minutes,
+or when PC Doctor closes. The main window never runs as administrator. If you say no, everything else is still recorded.
+Games that draw through DirectX are measured exactly; OpenGL and Vulkan games (such as Minecraft Java) are measured through
+the graphics driver's own events, which works on most PCs.
 
 ## Diagnostics without AI
 
-**Diagnostik** opens a page with five tabs: Hardware, Forbrug (usage), Netværk, Hændelser (event log) and Minecraft.
+**Diagnostik** opens a page with seven tabs: Hardware, Forbrug (usage), Netværk, Hændelser (event log), Minecraft
+(crash reports and a mod check), Andre spil (logs from Fortnite, Roblox and other games) and Spiltjenester
+(is a game's service down, or is it our internet?).
 Each tab runs the same built-in tools the agent uses, directly, and shows the result in plain Danish.
-It needs no API key, makes no AI call, and changes nothing on the PC. "Vis rådata" shows exactly what the agent
+It needs no API key, makes no AI call, and changes nothing on the PC (Spiltjenester reads public status pages on the internet). "Vis rådata" shows exactly what the agent
 would see, and **Spørg PC Doctor om dette** hands the topic to the agent in the main window.
 
 ## History
@@ -66,6 +84,10 @@ before anything is saved. The newest 100 conversations are kept; **Slet samtalen
 | `network_dns` | Resolve names and list the DNS servers in use |
 | `network_tcp` | Can we connect to host:port? |
 | `gaming_logs` | Finds Minecraft (official launcher, CurseForge, Prism, Modrinth, ATLauncher, GDLauncher) and reads crash reports, Java crash logs and latest.log |
+| `minecraft_mods` | Reads every mod in a Minecraft install (Fabric, Quilt, Forge, NeoForge): loader, versions, and mods that are missing, doubled, damaged or made for another loader |
+| `other_game_logs` | Logs of Fortnite, Rocket League, Fall Guys and other Unreal Engine games, Roblox and Unity games, with warning signs (graphics driver crash, out of memory, anti-cheat, lost connection) |
+| `service_status` | Is Fortnite, Epic, Discord, Roblox, Minecraft, Steam or Xbox down? Reads the official status page where there is one (Epic, Discord) and tests whether this PC reaches the servers and a neutral site |
+| `game_requirements` | Can this PC run a game? Requirements built in for Minecraft, Fortnite and Roblox (copied from the publishers 2026-10-14), any other game from the Steam store; compares RAM and disk space |
 | `performance_recording` | Reads a recording made with Optag ydelse: summary, timeline and top programs |
 | `shell_execute` | Windows PowerShell, governed by the mode above |
 

@@ -5,7 +5,16 @@ namespace PCDoctor.Core;
 /// <summary>
 /// One measurement during a performance recording. Percentages are 0-100 for the whole machine.
 /// Gpu and Disk are null when Windows does not offer that counter on this PC.
+/// The fields after TopProcessCpu were added later (Phase 4) and are null in older recordings.
 /// </summary>
+/// <param name="CpuSpeed">Processor speed as % of its normal (base) speed. Over 100 = boosting; well under 100 while busy = slowed down (heat or power saving).</param>
+/// <param name="GpuMemoryGb">Graphics card memory (VRAM) in use, in GB.</param>
+/// <param name="TopGpuProcess">The program using the graphics card most.</param>
+/// <param name="PingMs">Round trip to the internet (1.1.1.1) in milliseconds; null when no answer was due.</param>
+/// <param name="PingLost">True when that ping got no answer.</param>
+/// <param name="GameCpu">CPU used by the chosen game, % of the whole machine (game recordings only).</param>
+/// <param name="GameGpu">Graphics card used by the chosen game, % (game recordings only).</param>
+/// <param name="GameRamGb">RAM used by the chosen game, GB (game recordings only).</param>
 public sealed record PerfSample(
     double Seconds,
     double Cpu,
@@ -14,13 +23,27 @@ public sealed record PerfSample(
     double RamUsedGb,
     double? Disk,
     string? TopProcess,
-    double TopProcessCpu);
+    double TopProcessCpu,
+    double? CpuSpeed = null,
+    double? GpuMemoryGb = null,
+    string? TopGpuProcess = null,
+    double? PingMs = null,
+    bool PingLost = false,
+    double? GameCpu = null,
+    double? GameGpu = null,
+    double? GameRamGb = null);
 
 /// <summary>Takes one measurement of the whole machine. The Windows version lives in Platform.Windows.</summary>
 public interface IPerfSampler
 {
     /// <summary>Returns the current values (Seconds is filled in by the recorder).</summary>
     PerfSample Read();
+
+    /// <summary>
+    /// Process name of the game to follow (e.g. "javaw"), without ".exe". Its own CPU, GPU and RAM are then
+    /// filled in. Null for a normal recording. Samplers that cannot do this ignore it.
+    /// </summary>
+    string? Game { get => null; set { } }
 }
 
 /// <summary>A finished recording, saved as JSON in %LOCALAPPDATA%\PCDoctor\recordings.</summary>
@@ -33,6 +56,13 @@ public sealed class PerfRecording
     public string StopReason { get; set; } = "user";
 
     public List<PerfSample> Samples { get; set; } = [];
+
+    /// <summary>For a "why does my game stutter" recording: the game's name as shown to the user, and its process name.</summary>
+    public string? Game { get; set; }
+    public string? GameProcess { get; set; }
+
+    /// <summary>Frames per second, when the user allowed measuring them. Null when not asked for.</summary>
+    public FpsResult? Fps { get; set; }
 
     public double DurationSeconds => Samples.Count == 0 ? 0 : Samples[^1].Seconds;
 
@@ -102,6 +132,12 @@ public sealed record MetricSummary(double Average, double Max, double PercentOfT
 
 public sealed record ProcessShare(string Name, double PercentOfTime, double AverageCpu);
 
+/// <summary>Processor speed over a recording. SlowedPercentOfBusyTime: of the time the CPU was over 50 % busy, how much it ran under 80 % of its normal speed.</summary>
+public sealed record CpuSpeedSummary(double Average, double Min, double SlowedPercentOfBusyTime);
+
+/// <summary>Internet round trips during a recording. Spikes are pings over 150 ms, which players feel as lag.</summary>
+public sealed record PingSummary(double AverageMs, double MaxMs, int Spikes, double LostPercent, int Pings);
+
 /// <summary>Plain numbers that describe a recording. Used by the review window and by the agent tool.</summary>
 public sealed record PerfSummary(
     double DurationSeconds,
@@ -111,7 +147,14 @@ public sealed record PerfSummary(
     MetricSummary Ram,
     MetricSummary? Disk,
     double MaxRamUsedGb,
-    IReadOnlyList<ProcessShare> TopProcesses)
+    IReadOnlyList<ProcessShare> TopProcesses,
+    CpuSpeedSummary? CpuSpeed = null,
+    double? MaxGpuMemoryGb = null,
+    IReadOnlyList<ProcessShare>? TopGpuProcesses = null,
+    PingSummary? Ping = null,
+    MetricSummary? GameCpu = null,
+    MetricSummary? GameGpu = null,
+    double? MaxGameRamGb = null)
 {
     public static PerfSummary From(PerfRecording r)
     {
@@ -130,7 +173,48 @@ public sealed record PerfSummary(
              .Select(g => new ProcessShare(g.Key, Math.Round(100.0 * g.Count() / n, 0), Math.Round(g.Average(x => x.TopProcessCpu), 1)))
              .OrderByDescending(p => p.PercentOfTime)
              .Take(5)
-             .ToList());
+             .ToList(),
+            SpeedOf(s),
+            s.Any(x => x.GpuMemoryGb is not null) ? Math.Round(s.Max(x => x.GpuMemoryGb ?? 0), 1) : null,
+            s.Any(x => x.TopGpuProcess is not null)
+                ? s.Where(x => !string.IsNullOrEmpty(x.TopGpuProcess))
+                   .GroupBy(x => x.TopGpuProcess!, StringComparer.OrdinalIgnoreCase)
+                   .Select(g => new ProcessShare(g.Key, Math.Round(100.0 * g.Count() / n, 0), 0))
+                   .OrderByDescending(p => p.PercentOfTime)
+                   .Take(5)
+                   .ToList()
+                : null,
+            PingOf(s),
+            Summarise(s.Select(x => x.GameCpu)),
+            Summarise(s.Select(x => x.GameGpu)),
+            s.Any(x => x.GameRamGb is not null) ? Math.Round(s.Max(x => x.GameRamGb ?? 0), 1) : null);
+    }
+
+    static CpuSpeedSummary? SpeedOf(List<PerfSample> s)
+    {
+        var v = s.Where(x => x.CpuSpeed is not null).ToList();
+        if (v.Count == 0)
+            return null;
+        var busy = v.Where(x => x.Cpu > 50).ToList();
+        return new CpuSpeedSummary(
+            Math.Round(v.Average(x => x.CpuSpeed!.Value), 0),
+            Math.Round(v.Min(x => x.CpuSpeed!.Value), 0),
+            busy.Count == 0 ? 0 : Math.Round(100.0 * busy.Count(x => x.CpuSpeed < 80) / busy.Count, 0));
+    }
+
+    static PingSummary? PingOf(List<PerfSample> s)
+    {
+        var answered = s.Where(x => x.PingMs is not null).Select(x => x.PingMs!.Value).ToList();
+        int lost = s.Count(x => x.PingLost);
+        int pings = answered.Count + lost;
+        if (pings == 0)
+            return null;
+        return new PingSummary(
+            answered.Count == 0 ? 0 : Math.Round(answered.Average(), 0),
+            answered.Count == 0 ? 0 : Math.Round(answered.Max(), 0),
+            answered.Count(x => x > 150),
+            Math.Round(100.0 * lost / pings, 1),
+            pings);
     }
 
     static MetricSummary? Summarise(IEnumerable<double?> values)

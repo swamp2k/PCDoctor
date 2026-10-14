@@ -7,9 +7,6 @@ namespace PCDoctor.Diagnostics;
 /// <summary>gaming_logs: finds Minecraft installs and their crash logs, and reads the important parts of one.</summary>
 public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
 {
-    /// <summary>At most this much of a file is read: the end of latest.log, the start of a crash file.</summary>
-    const int MaxReadBytes = 2_000_000;
-
     readonly MinecraftLocator _locator = locator ?? new MinecraftLocator();
 
     public string Name => "gaming_logs";
@@ -37,7 +34,7 @@ public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
         {
             // Only files this tool found itself; never a path the model made up.
             var match = installs.SelectMany(i => i.Files)
-                .FirstOrDefault(x => string.Equals(Path.GetFullPath(x.Path), SafeFullPath(file), StringComparison.OrdinalIgnoreCase));
+                .FirstOrDefault(x => string.Equals(Path.GetFullPath(x.Path), LogFiles.SafeFullPath(file), StringComparison.OrdinalIgnoreCase));
             return match is null
                 ? ToolResult.Error("That file is not in the list of Minecraft logs. Call gaming_logs without 'file' to see the list.")
                 : ToolResult.Json(Read(match));
@@ -78,7 +75,7 @@ public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
         try
         {
             // A crash report's key facts are at the top; a game log's are at the end.
-            text = ReadCapped(file.Path, fromEnd: file.Kind == "latest_log");
+            text = LogFiles.ReadCapped(file.Path, fromEnd: file.Kind == "latest_log");
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -92,24 +89,6 @@ public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
             _ => MinecraftLatestLog.Parse(text),
         };
         return new { file = file.Path, kind = file.Kind, modified = Local(file.Modified), content };
-    }
-
-    static string ReadCapped(string path, bool fromEnd)
-    {
-        // latest.log is held open by a running game; allow others to keep writing.
-        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        if (fs.Length > MaxReadBytes && fromEnd)
-            fs.Seek(-MaxReadBytes, SeekOrigin.End);
-        using var reader = new StreamReader(fs);
-        var buffer = new char[MaxReadBytes];
-        int read = reader.ReadBlock(buffer, 0, buffer.Length);
-        return new string(buffer, 0, read);
-    }
-
-    static string? SafeFullPath(string path)
-    {
-        try { return Path.GetFullPath(path); }
-        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
     }
 
     static string Local(DateTime t) => t.ToString("yyyy-MM-ddTHH:mm:ss");

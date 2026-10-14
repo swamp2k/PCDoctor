@@ -22,6 +22,10 @@ static class Services
         tools.Add(new DnsTool());
         tools.Add(new TcpTool());
         tools.Add(new GamingLogsTool());
+        tools.Add(new MinecraftModsTool());
+        tools.Add(new OtherGameLogsTool());
+        tools.Add(new ServiceStatusTool());
+        tools.Add(new GameRequirementsTool());
         tools.Add(new PerformanceRecordingTool(new PerfRecordingStore()));
         if (OperatingSystem.IsWindows())
             tools.Add(new PowerShellTool(settings));
@@ -31,6 +35,18 @@ static class Services
     /// <summary>Performance recording reads Windows counters; there is no sampler elsewhere.</summary>
     public static IPerfSampler? CreatePerfSampler() =>
         OperatingSystem.IsWindows() ? new WindowsPerfSampler() : null;
+
+    /// <summary>
+    /// Starts FPS measuring for a game (Windows asks for administrator rights). Returns how to stop it and get the result,
+    /// or why it did not start.
+    /// </summary>
+    public static (Func<DateTimeOffset, Task<FpsResult>>? Stop, string? Problem) StartFps(string gameProcess)
+    {
+        if (!OperatingSystem.IsWindows())
+            return (null, "FPS kan kun måles på Windows.");
+        var (handle, problem) = FpsCapture.Start(gameProcess, AppPaths.SubDir("fps"));
+        return handle is null ? (null, problem) : (handle.StopAsync, null);
+    }
 
     public static ISecretStore CreateSecretStore() =>
         OperatingSystem.IsWindows() ? new CredentialManagerStore() : new EnvironmentSecretStore();

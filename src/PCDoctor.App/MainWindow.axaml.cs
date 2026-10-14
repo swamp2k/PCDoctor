@@ -49,7 +49,8 @@ public partial class MainWindow : Window
         }, RoutingStrategies.Tunnel);
         SettingsButton.Click += async (_, _) => await OpenSettingsAsync();
         NewChatButton.Click += (_, _) => NewConversation();
-        RecordButton.Click += (_, _) => OpenRecording();
+        RecordButton.Click += (_, _) => OpenRecording(gameMode: false);
+        StutterButton.Click += (_, _) => OpenRecording(gameMode: true);
         DiagnosticsButton.Click += (_, _) => OpenDiagnostics();
         HistoryButton.Click += (_, _) => OpenHistory();
         ShowRequestButton.Click += async (_, _) =>
@@ -240,14 +241,14 @@ public partial class MainWindow : Window
             return await dialog.ShowDialog<bool>(this);
         });
 
-    void OpenRecording()
+    void OpenRecording(bool gameMode)
     {
         if (_recordingWindow is not null)
         {
             _recordingWindow.Activate();
             return;
         }
-        _recordingWindow = new RecordingWindow(Services.CreatePerfSampler(), new PerfRecordingStore(), Ask);
+        _recordingWindow = new RecordingWindow(Services.CreatePerfSampler(), new PerfRecordingStore(), Ask, gameMode);
         _recordingWindow.Closed += (_, _) => _recordingWindow = null;
         _recordingWindow.Show(this);
     }

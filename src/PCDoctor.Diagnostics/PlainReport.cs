@@ -284,6 +284,130 @@ public static class PlainReport
         return $"{label} ({Str(x, "host")}): svarer, {Num(x, "avg_ms"):0} ms{loss}";
     }
 
+    // ---- Phase 4: mods, other games, online services ----
+
+    /// <summary>The minecraft_mods result: loader, number of mods and the problems found.</summary>
+    public static string Mods(JsonElement r)
+    {
+        if (!r.TryGetProperty("loader", out _))
+            return Str(r, "note");
+        var b = new StringBuilder();
+        string loader = Str(r, "loader") switch
+        {
+            "fabric" => "Fabric", "quilt" => "Quilt", "forge" => "Forge", "neoforge" => "NeoForge", "vanilla" => "ingen (vanilla)", var x => x,
+        };
+        b.AppendLine($"Mods i {Str(r, "launcher")}: {Str(r, "name")}");
+        b.AppendLine($"Mod-loader: {loader}, {Num(r, "mods"):0} mods" + (Num(r, "disabled") is > 0 and var d ? $", {d:0} slået fra" : ""));
+        var problems = Rows(r, "problems").ToList();
+        if (problems.Count == 0)
+        {
+            b.Append("Ingen problemer fundet: ingen manglende mods, ingen dubletter, alle passer til loaderen.");
+            return b.ToString();
+        }
+        b.AppendLine($"⚠ {problems.Count} problem{(problems.Count == 1 ? "" : "er")}:");
+        foreach (var p in problems.Take(20))
+        {
+            string kind = Str(p, "Kind") switch
+            {
+                "missing_dependency" => "Mangler en mod",
+                "duplicate" => "Samme mod to gange",
+                "wrong_loader" => "Forkert loader",
+                "unreadable" => "Ødelagt fil",
+                var x => x,
+            };
+            b.AppendLine($"  {kind}: {Str(p, "Detail")}");
+        }
+        return b.ToString().TrimEnd();
+    }
+
+    /// <summary>The other_game_logs result: the games found and the newest log's warning signs.</summary>
+    public static string OtherGames(JsonElement r)
+    {
+        var games = Rows(r, "games").ToList();
+        if (games.Count == 0)
+            return "Fandt ingen logfiler fra Fortnite, Roblox, Rocket League eller andre Unreal- og Unity-spil for denne Windows-bruger.";
+        var b = new StringBuilder();
+        b.AppendLine("Spil med logfiler (senest spillet først):");
+        foreach (var g in games.Take(15))
+        {
+            int crashes = Rows(g, "files").Count(f => Str(f, "kind") == "crash_log");
+            b.AppendLine($"  {Str(g, "name")}: senest {Date(Str(g, "last_activity"))}" + (crashes > 0 ? $", {crashes} crash-logs" : ""));
+        }
+        if (r.TryGetProperty("newest_log", out var n) && n.ValueKind == JsonValueKind.Object)
+        {
+            b.AppendLine();
+            b.AppendLine($"Nyeste log: {Str(n, "game")}, {Date(Str(n, "modified"))}{(Str(n, "kind") == "crash_log" ? " (crash-log)" : "")}");
+            if (n.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.Object)
+            {
+                var signs = Rows(c, "warning_signs").ToList();
+                if (signs.Count == 0)
+                    b.AppendLine($"Ingen kendte faresignaler. {Num(c, "problem_line_count"):0} linjer med fejl i alt.");
+                foreach (var sgn in signs)
+                    b.AppendLine($"⚠ {SignDa(Str(sgn, "hint"))}");
+            }
+            else if (Str(n, "error") is { Length: > 0 } e)
+                b.AppendLine($"Kunne ikke læses: {e}");
+        }
+        return b.ToString().TrimEnd();
+    }
+
+    /// <summary>The warning-sign hints are English for the model; the page shows them in Danish.</summary>
+    static string SignDa(string hint) => hint switch
+    {
+        _ when hint.StartsWith("The graphics card or its driver") => "Grafikkortet eller dets driver holdt op med at svare (ofte driver, varme eller overclock).",
+        _ when hint.StartsWith("The graphics card ran out") => "Grafikkortet løb tør for sin egen hukommelse (VRAM). Skru ned for grafik eller opløsning.",
+        _ when hint.StartsWith("The game ran out of memory") => "Spillet løb tør for hukommelse (RAM).",
+        _ when hint.StartsWith("Anti-cheat") => "Anti-snyd-programmet nævnes; fejl i det kan stoppe spillet eller smide spilleren af.",
+        _ when hint.StartsWith("Connection to the game") => "Forbindelsen til spillets servere blev afbrudt eller svarede ikke.",
+        _ when hint.StartsWith("The game crashed with an access violation") => "Spillet crashede med en adgangsfejl (fejl i spillet, ødelagte spilfiler eller et program/overlay der blander sig).",
+        _ => hint,
+    };
+
+    /// <summary>The service_status result: is the game down, or is it our connection?</summary>
+    public static string Services(JsonElement r)
+    {
+        var b = new StringBuilder();
+        bool internet = r.TryGetProperty("neutral_site", out var ns) && Bool(ns, "reachable");
+        b.AppendLine(internet
+            ? "Internettet virker fra denne PC (google.com svarer)."
+            : "⚠ Denne PC kan ikke nå google.com. Problemet er sandsynligvis din egen internetforbindelse, ikke spillene.");
+        b.AppendLine();
+        foreach (var svc in Rows(r, "services"))
+        {
+            var conns = Rows(svc, "connections").ToList();
+            int ok = conns.Count(c => Bool(c, "reachable"));
+            string reach = ok == conns.Count ? "serverne svarer" : ok == 0 ? "⚠ serverne svarer ikke" : $"⚠ {ok} af {conns.Count} servere svarer";
+            string official = "";
+            if (svc.TryGetProperty("official_status", out var st) && st.ValueKind == JsonValueKind.Object)
+            {
+                if (Str(st, "error") is { Length: > 0 })
+                    official = "statussiden kunne ikke læses";
+                else
+                {
+                    var bad = Rows(st, "components_with_problems").ToList();
+                    var incidents = Rows(st, "open_incidents").ToList();
+                    official = bad.Count == 0 && incidents.Count == 0
+                        ? "officiel status: alt kører"
+                        : "⚠ officiel status: " + string.Join("; ", bad.Take(3).Select(c => $"{Str(c, "component")} {StatusDa(Str(c, "status"))}")
+                            .Concat(incidents.Take(2).Select(i => $"\"{Str(i, "title")}\"")));
+                }
+            }
+            b.AppendLine($"{Str(svc, "name")}: {reach}{(official.Length > 0 ? ", " + official : "")}");
+        }
+        b.AppendLine();
+        b.Append("Roblox, Minecraft, Steam og Xbox har ingen officiel status, vi kan læse automatisk; for dem testes kun forbindelsen.");
+        return b.ToString().TrimEnd();
+    }
+
+    static string StatusDa(string s) => s switch
+    {
+        _ when s.StartsWith("degraded") => "kører langsomt",
+        _ when s.StartsWith("partial") => "delvist nede",
+        _ when s.StartsWith("major") => "nede",
+        _ when s.StartsWith("under maintenance") => "under vedligehold",
+        _ => s,
+    };
+
     // ---- JSON helpers: tolerant, because WMI returns numbers as strings and fields may be missing ----
 
     static IEnumerable<JsonElement> Rows(JsonElement r, string name) =>

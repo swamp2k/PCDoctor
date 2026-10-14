@@ -1,0 +1,5 @@
+2026-10-12T18:00:01.120Z,0.120000,1a2b,6 [FLog::Output] Roblox started
+2026-10-12T18:00:05.400Z,4.400000,1a2b,6 [FLog::Network] Connecting to server
+2026-10-12T18:12:44.010Z,763.010000,1a2b,6 [FLog::Network] Lost connection with reason : Lost connection to the game server, please reconnect
+2026-10-12T18:12:44.020Z,763.020000,1a2b,6 [FLog::Error] Disconnection Notification. Reason: 277
+2026-10-12T18:12:50.000Z,769.000000,1a2b,6 [FLog::Output] Shutting down

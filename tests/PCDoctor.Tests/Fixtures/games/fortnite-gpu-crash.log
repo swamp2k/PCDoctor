@@ -1,0 +1,11 @@
+Log file open, 10/12/26 19:02:11
+LogInit: Display: Running engine for game: FortniteGame
+LogInit: Build: ++Fortnite+Release-32.10-CL-38371234
+LogRHI: Display: Using D3D12
+LogNet: Login request: ?Name=Player userId: EOS:0002a
+LogOnline: Display: STAT: Logged in
+LogD3D12RHI: Error: GPU crashed or D3D Device Removed.
+LogD3D12RHI: Error: DXGI_ERROR_DEVICE_REMOVED with Reason: DXGI_ERROR_DEVICE_HUNG
+LogWindows: Error: === Critical error: ===
+LogWindows: Error: Fatal error!
+LogExit: Executing StaticShutdownAfterError

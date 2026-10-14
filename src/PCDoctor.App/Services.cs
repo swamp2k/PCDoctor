@@ -36,6 +36,18 @@ static class Services
     public static IPerfSampler? CreatePerfSampler() =>
         OperatingSystem.IsWindows() ? new WindowsPerfSampler() : null;
 
+    /// <summary>
+    /// Starts FPS measuring for a game (Windows asks for administrator rights). Returns how to stop it and get the result,
+    /// or why it did not start.
+    /// </summary>
+    public static (Func<DateTimeOffset, Task<FpsResult>>? Stop, string? Problem) StartFps(string gameProcess)
+    {
+        if (!OperatingSystem.IsWindows())
+            return (null, "FPS kan kun måles på Windows.");
+        var (handle, problem) = FpsCapture.Start(gameProcess, AppPaths.SubDir("fps"));
+        return handle is null ? (null, problem) : (handle.StopAsync, null);
+    }
+
     public static ISecretStore CreateSecretStore() =>
         OperatingSystem.IsWindows() ? new CredentialManagerStore() : new EnvironmentSecretStore();
 

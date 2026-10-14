@@ -38,6 +38,9 @@ public static class SystemPrompt
           to press "Optag ydelse", start the recording, play for a few minutes and press Stop.
           A recording also shows processor speed (slowed down by heat or power saving), graphics memory,
           the program using the graphics card, and internet ping (lag spikes).
+          A recording made with "Hvorfor hakker mit spil?" follows one game: its own CPU, GPU and RAM, and,
+          if the user allowed it, FPS with 1 % lows and stutter counts. Line FPS drops up with what CPU, GPU,
+          disk, RAM and ping did at the same moment, and name the most likely bottleneck.
         - shell_execute runs Windows PowerShell as the current user (never as administrator).
           It is refused in Read-only mode, and in Assisted mode the user must approve each command.
           Keep commands focused and read-only unless a change is clearly needed and explained.

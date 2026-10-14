@@ -12,6 +12,9 @@ namespace PCDoctor.Core;
 /// <param name="TopGpuProcess">The program using the graphics card most.</param>
 /// <param name="PingMs">Round trip to the internet (1.1.1.1) in milliseconds; null when no answer was due.</param>
 /// <param name="PingLost">True when that ping got no answer.</param>
+/// <param name="GameCpu">CPU used by the chosen game, % of the whole machine (game recordings only).</param>
+/// <param name="GameGpu">Graphics card used by the chosen game, % (game recordings only).</param>
+/// <param name="GameRamGb">RAM used by the chosen game, GB (game recordings only).</param>
 public sealed record PerfSample(
     double Seconds,
     double Cpu,
@@ -25,13 +28,22 @@ public sealed record PerfSample(
     double? GpuMemoryGb = null,
     string? TopGpuProcess = null,
     double? PingMs = null,
-    bool PingLost = false);
+    bool PingLost = false,
+    double? GameCpu = null,
+    double? GameGpu = null,
+    double? GameRamGb = null);
 
 /// <summary>Takes one measurement of the whole machine. The Windows version lives in Platform.Windows.</summary>
 public interface IPerfSampler
 {
     /// <summary>Returns the current values (Seconds is filled in by the recorder).</summary>
     PerfSample Read();
+
+    /// <summary>
+    /// Process name of the game to follow (e.g. "javaw"), without ".exe". Its own CPU, GPU and RAM are then
+    /// filled in. Null for a normal recording. Samplers that cannot do this ignore it.
+    /// </summary>
+    string? Game { get => null; set { } }
 }
 
 /// <summary>A finished recording, saved as JSON in %LOCALAPPDATA%\PCDoctor\recordings.</summary>
@@ -44,6 +56,13 @@ public sealed class PerfRecording
     public string StopReason { get; set; } = "user";
 
     public List<PerfSample> Samples { get; set; } = [];
+
+    /// <summary>For a "why does my game stutter" recording: the game's name as shown to the user, and its process name.</summary>
+    public string? Game { get; set; }
+    public string? GameProcess { get; set; }
+
+    /// <summary>Frames per second, when the user allowed measuring them. Null when not asked for.</summary>
+    public FpsResult? Fps { get; set; }
 
     public double DurationSeconds => Samples.Count == 0 ? 0 : Samples[^1].Seconds;
 
@@ -132,7 +151,10 @@ public sealed record PerfSummary(
     CpuSpeedSummary? CpuSpeed = null,
     double? MaxGpuMemoryGb = null,
     IReadOnlyList<ProcessShare>? TopGpuProcesses = null,
-    PingSummary? Ping = null)
+    PingSummary? Ping = null,
+    MetricSummary? GameCpu = null,
+    MetricSummary? GameGpu = null,
+    double? MaxGameRamGb = null)
 {
     public static PerfSummary From(PerfRecording r)
     {
@@ -162,7 +184,10 @@ public sealed record PerfSummary(
                    .Take(5)
                    .ToList()
                 : null,
-            PingOf(s));
+            PingOf(s),
+            Summarise(s.Select(x => x.GameCpu)),
+            Summarise(s.Select(x => x.GameGpu)),
+            s.Any(x => x.GameRamGb is not null) ? Math.Round(s.Max(x => x.GameRamGb ?? 0), 1) : null);
     }
 
     static CpuSpeedSummary? SpeedOf(List<PerfSample> s)

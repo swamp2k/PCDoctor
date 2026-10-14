@@ -40,6 +40,21 @@ programs used the CPU and the graphics card most, the processor's speed (it slow
 how much graphics memory (VRAM) is in use, and a ping to the internet (1.1.1.1) to catch lag spikes. The screen is not recorded. Afterwards you see a chart and a summary, and
 **Spørg PC Doctor om optagelsen** asks the agent what held the PC back. The newest 20 recordings are kept.
 
+## Why does my game stutter?
+
+**Hvorfor hakker mit spil?** is the one-button version of the recorder. Start the game, pick it in the list, press Start,
+play until it stutters, then come back and press Stop. Besides the whole PC it follows the game itself (its own CPU,
+graphics card and RAM use). With **Mål også FPS** ticked it also measures frames per second: average, best and worst
+second, 1 % and 0.1 % lows, and visible hitches. When you press Stop, PC Doctor is asked automatically what held the game back.
+
+FPS is measured the way PresentMon and FPS overlays do it: Windows notes every frame the game shows (an ETW event), and
+PC Doctor counts the chosen game's frames. Windows only gives this to programs with administrator rights. That is why
+Windows asks "Do you want to allow this app to make changes?" when you press Start. Only a small, windowless copy of
+PCDoctor.exe that does nothing but count frames runs as administrator, and it stops when you press Stop, after 16 minutes,
+or when PC Doctor closes. The main window never runs as administrator. If you say no, everything else is still recorded.
+Games that draw through DirectX are measured exactly; OpenGL and Vulkan games (such as Minecraft Java) are measured through
+the graphics driver's own events, which works on most PCs.
+
 ## Diagnostics without AI
 
 **Diagnostik** opens a page with seven tabs: Hardware, Forbrug (usage), Netværk, Hændelser (event log), Minecraft

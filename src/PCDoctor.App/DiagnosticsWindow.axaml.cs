@@ -21,7 +21,11 @@ public partial class DiagnosticsWindow : Window
     readonly CancellationTokenSource _closing = new();
 
     /// <summary>A tab: what it checks, how to run it, and what to ask the agent about it.</summary>
-    sealed record Check(string Header, string Intro, Func<CancellationToken, Task<(string Text, string Raw)>> Run, string Question);
+    /// <param name="PickGame">The tab shows a list of the games found, and the question is about the chosen game only.</param>
+    sealed record Check(string Header, string Intro, Func<CancellationToken, Task<(string Text, string Raw)>> Run, string Question, bool PickGame = false);
+
+    /// <summary>Games the "Andre spil" tab found, newest first. Filled when the tab runs.</summary>
+    List<string> _otherGames = [];
 
     public DiagnosticsWindow() : this([], _ => false) { }
 
@@ -86,9 +90,12 @@ public partial class DiagnosticsWindow : Window
                 async ct =>
                 {
                     var r = await Tool("other_game_logs", "{}", ct);
+                    _otherGames = r.TryGetProperty("games", out var g) && g.ValueKind == JsonValueKind.Array
+                        ? g.EnumerateArray().Select(x => x.GetProperty("name").GetString() ?? "").Where(n => n.Length > 0).Distinct().ToList()
+                        : [];
                     return (PlainReport.OtherGames(r), Raw(r));
                 },
-                "Kig i logfilerne fra de spil jeg har spillet for nylig. Er der tegn på, hvorfor de crasher eller hakker?"),
+                "{0}", PickGame: true),
 
             new("Spiltjenester", "Er spillet nede, eller er det vores internet? Læser de officielle statussider (Epic Games/Fortnite, Discord) og tester, om PC'en kan nå spillenes servere. Tager ca. 10 sekunder.",
                 async ct =>
@@ -118,6 +125,10 @@ public partial class DiagnosticsWindow : Window
         var top = new DockPanel { Margin = new(0, 8, 0, 8) };
         DockPanel.SetDock(askButton, Dock.Right);
         top.Children.Add(askButton);
+        // "Andre spil": ask about one game, not every log on the PC.
+        var gameBox = new ComboBox { MinWidth = 200, Margin = new(0, 0, 8, 0), IsVisible = check.PickGame };
+        DockPanel.SetDock(gameBox, Dock.Right);
+        top.Children.Add(gameBox);
         var left = new StackPanel { Orientation = Orientation.Horizontal };
         left.Children.Add(runButton);
         left.Children.Add(status);
@@ -149,6 +160,11 @@ public partial class DiagnosticsWindow : Window
             try
             {
                 var (text, rawText) = await check.Run(_closing.Token);
+                if (check.PickGame)
+                {
+                    gameBox.ItemsSource = _otherGames;
+                    gameBox.SelectedIndex = _otherGames.Count > 0 ? 0 : -1;
+                }
                 result.Text = text;
                 raw.Text = rawText;
                 rawExpander.IsVisible = true;
@@ -172,13 +188,18 @@ public partial class DiagnosticsWindow : Window
         }
 
         runButton.Click += async (_, _) => await RunAsync();
-        askButton.Click += (_, _) => status.Text = _ask(check.Question)
+        askButton.Click += (_, _) => status.Text = _ask(check.PickGame ? GameQuestion(gameBox.SelectedItem as string) : check.Question)
             ? "Spørgsmålet er sendt til PC Doctor i hovedvinduet."
             : "PC Doctor er optaget. Vent til den er færdig, og prøv igen.";
 
         // Run once, the first time the tab is shown.
         return new TabItem { Header = check.Header, Content = panel, Tag = new Action(() => { if (!started) _ = RunAsync(); }) };
     }
+
+    /// <summary>The question for one game, so the agent reads only that game's logs.</summary>
+    public static string GameQuestion(string? game) => game is null
+        ? "Kig i logfilerne fra det spil jeg senest har spillet. Er der tegn på, hvorfor det crasher eller hakker?"
+        : $"Hvorfor crasher eller hakker {game}? Kig kun i logfilerne for {game} (other_game_logs med game \"{game}\").";
 
     /// <summary>Runs a built-in read-only tool directly. These never start a shell, so no permission check is needed here.</summary>
     async Task<JsonElement> Tool(string name, string input, CancellationToken ct)

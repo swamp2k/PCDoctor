@@ -221,6 +221,21 @@ public sealed class OtherGameLogsTests : IDisposable
     }
 
     [Fact]
+    public async Task One_game_can_be_asked_about_alone()
+    {
+        Copy("fortnite-gpu-crash.log", Path.Combine(Local, "FortniteGame", "Saved", "Logs", "FortniteGame.log"), 1);
+        Copy("roblox-disconnect.log", Path.Combine(Local, "Roblox", "logs", "r.log"), 20);
+        var tool = new OtherGameLogsTool(new OtherGamesLocator(Local, LocalLow));
+
+        var root = JsonDocument.Parse((await tool.RunAsync(Json.Parse("""{"game":"roblox"}"""), CancellationToken.None)).Content).RootElement;
+        Assert.Equal(["Roblox"], root.GetProperty("games").EnumerateArray().Select(g => g.GetProperty("name").GetString()));
+        Assert.Equal("Roblox", root.GetProperty("newest_log").GetProperty("game").GetString());
+
+        var none = await tool.RunAsync(Json.Parse("""{"game":"Valorant"}"""), CancellationToken.None);
+        Assert.Contains("Fortnite, Roblox", none.Content);
+    }
+
+    [Fact]
     public async Task No_games_gives_a_plain_note()
     {
         var r = await new OtherGameLogsTool(new OtherGamesLocator(Local, LocalLow)).RunAsync(Json.Parse("{}"), CancellationToken.None);

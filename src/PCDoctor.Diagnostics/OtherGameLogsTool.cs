@@ -14,7 +14,8 @@ public sealed class OtherGameLogsTool(OtherGamesLocator? locator = null) : ITool
         "Find the logs of games other than Minecraft: Fortnite, Rocket League, Fall Guys and other Unreal Engine games (game logs and crash logs), " +
         "Roblox, and Unity games (Player.log). Without 'file' it lists the games found, newest activity first, and reads the newest log of the " +
         "most recently played game. With 'file' (a path from the list) it reads that log: error lines, warning signs (graphics driver crash, " +
-        "out of memory, anti-cheat, lost connection) and the last lines before the game stopped. For Minecraft use gaming_logs.";
+        "out of memory, anti-cheat, lost connection) and the last lines before the game stopped. With 'game' (a name from the list) it only " +
+        "looks at that game; use it whenever the user asks about one game. For Minecraft use gaming_logs.";
     public ToolKind Kind => ToolKind.ReadOnly;
     public JsonObject InputSchema => new()
     {
@@ -22,6 +23,7 @@ public sealed class OtherGameLogsTool(OtherGamesLocator? locator = null) : ITool
         ["properties"] = new JsonObject
         {
             ["file"] = new JsonObject { ["type"] = "string", ["description"] = "Full path of a log from this tool's list. Other paths are refused." },
+            ["game"] = new JsonObject { ["type"] = "string", ["description"] = "Only this game, e.g. \"Fortnite\" or \"Roblox\"." },
         },
     };
 
@@ -38,6 +40,21 @@ public sealed class OtherGameLogsTool(OtherGamesLocator? locator = null) : ITool
             if (game is null)
                 return ToolResult.Error("That file is not in the list of game logs. Call other_game_logs without 'file' to see the list.");
             return ToolResult.Json(Read(game, game.Files.First(x => string.Equals(Path.GetFullPath(x.Path), full, StringComparison.OrdinalIgnoreCase))));
+        }
+
+        string? only = input.TryGetProperty("game", out var gn) && gn.ValueKind == JsonValueKind.String ? gn.GetString()?.Trim() : null;
+        if (!string.IsNullOrEmpty(only))
+        {
+            var match = games.Where(g => g.Name.Equals(only, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (match.Count == 0)
+                match = games.Where(g => g.Name.Contains(only, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (match.Count == 0)
+                return ToolResult.Json(new
+                {
+                    games = Array.Empty<object>(),
+                    note = $"No logs found for '{only}'. Games with logs: {(games.Count == 0 ? "none" : string.Join(", ", games.Select(g => g.Name)))}.",
+                });
+            games = match;
         }
 
         if (games.Count == 0)

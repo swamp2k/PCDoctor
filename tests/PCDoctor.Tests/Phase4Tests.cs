@@ -231,6 +231,9 @@ public sealed class OtherGameLogsTests : IDisposable
         Assert.Equal(["Roblox"], root.GetProperty("games").EnumerateArray().Select(g => g.GetProperty("name").GetString()));
         Assert.Equal("Roblox", root.GetProperty("newest_log").GetProperty("game").GetString());
 
+        var both = await tool.RunAsync(Json.Parse("""{"game":"o"}"""), CancellationToken.None);
+        Assert.Contains("matches several games", both.Content);
+
         var none = await tool.RunAsync(Json.Parse("""{"game":"Valorant"}"""), CancellationToken.None);
         Assert.Contains("Fortnite, Roblox", none.Content);
     }

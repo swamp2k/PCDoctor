@@ -54,6 +54,12 @@ public sealed class OtherGameLogsTool(OtherGamesLocator? locator = null) : ITool
                     games = Array.Empty<object>(),
                     note = $"No logs found for '{only}'. Games with logs: {(games.Count == 0 ? "none" : string.Join(", ", games.Select(g => g.Name)))}.",
                 });
+            if (match.Count > 1)
+                return ToolResult.Json(new
+                {
+                    games = Array.Empty<object>(),
+                    note = $"'{only}' matches several games: {string.Join(", ", match.Select(g => g.Name))}. Call again with the exact name.",
+                });
             games = match;
         }
 

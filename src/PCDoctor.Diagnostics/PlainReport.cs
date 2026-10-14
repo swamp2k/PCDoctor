@@ -12,6 +12,12 @@ public static class PlainReport
 {
     static readonly CultureInfo Da = CultureInfo.GetCultureInfo("da-DK");
 
+    /// <summary>Marks a line that needs fixing. The Diagnostics page shows it with a red light instead of the sign.</summary>
+    public const string Problem = "⚠";
+
+    /// <summary>Marks a line worth a look. The Diagnostics page shows it with a yellow light instead of the sign.</summary>
+    public const string Notice = "△";
+
     public static string Hardware(JsonElement r)
     {
         var b = new StringBuilder();
@@ -22,9 +28,13 @@ public static class PlainReport
             string line = $"Grafikkort (GPU): {Str(gpu, "Name")}";
             if (Str(gpu, "DriverVersion") is { Length: > 0 } v)
                 line += $", driver {v}";
+            bool old = false;
             if (WmiDate(Str(gpu, "DriverDate")) is { } d)
-                line += $" fra {d.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)}" + (d < DateTime.Now.AddYears(-1) ? " (over et år gammel)" : "");
-            b.AppendLine(line);
+            {
+                old = d < DateTime.Now.AddYears(-1);
+                line += $" fra {d.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture)}" + (old ? " (over et år gammel)" : "");
+            }
+            b.AppendLine(old ? $"{Notice} {line}" : line);
         }
         var modules = Rows(r, "memory_modules").ToList();
         double ramGb = modules.Sum(m => Num(m, "Capacity") ?? 0) / 1073741824.0;
@@ -94,7 +104,7 @@ public static class PlainReport
             b.AppendLine("Måling af CPU/GPU/RAM findes kun på Windows.");
 
         if (Num(r, "uptime_hours") is { } up)
-            b.AppendLine($"Tændt siden sidste genstart: {Duration(up)}" + (up > 24 * 7 ? " (en genstart kan hjælpe)" : ""));
+            b.AppendLine(up > 24 * 7 ? $"{Notice} Tændt siden sidste genstart: {Duration(up)} (en genstart kan hjælpe)" : $"Tændt siden sidste genstart: {Duration(up)}");
 
         var drives = Rows(r, "drives").ToList();
         if (drives.Count > 0)
@@ -136,7 +146,7 @@ public static class PlainReport
             string when = DateTime.TryParse(Str(g, "last"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) ? t.ToString("dd-MM HH:mm", CultureInfo.InvariantCulture) : Str(g, "last");
             string count = Num(g, "count") is > 1 and var n ? $"  ×{n:0}" : "";
             string level = Str(g, "level") == "critical" ? "KRITISK " : "";
-            b.AppendLine($"{when}  {level}{Str(g, "source")} ({Str(g, "event_id")}){count}");
+            b.AppendLine($"{(level.Length > 0 ? Problem : Notice)} {when}  {level}{Str(g, "source")} ({Str(g, "event_id")}){count}");
             if (Str(g, "meaning") is { Length: > 0 } meaning)
                 b.AppendLine($"   {meaning}");
             if (Str(g, "message") is { Length: > 0 } msg)
@@ -181,7 +191,7 @@ public static class PlainReport
     public static string Crash(JsonElement c)
     {
         var b = new StringBuilder();
-        b.AppendLine($"Seneste crash: {Date(Str(c, "modified"))}");
+        b.AppendLine($"{Notice} Seneste crash: {Date(Str(c, "modified"))}");
         if (!c.TryGetProperty("content", out var x) || x.ValueKind != JsonValueKind.Object)
             return b.AppendLine(Str(c, "error")).ToString();
 
@@ -254,11 +264,17 @@ public static class PlainReport
         return s;
     }
 
+    /// <summary>The light for the network verdict: a problem when something does not work, a notice when it is slow or unstable.</summary>
+    static string VerdictMark(NetworkFacts f) =>
+        !f.HttpsWorks || !f.DnsWorks ? Problem + " "
+        : f.InternetReplies && (f.InternetLossPercent > 0 || f.InternetAvgMs is > 100) ? Notice + " "
+        : "";
+
     public static string Network(JsonElement gatewayPing, JsonElement internetPing, JsonElement dns, JsonElement tcp)
     {
         var facts = NetworkFacts.From(gatewayPing, internetPing, dns, tcp);
         var b = new StringBuilder();
-        b.AppendLine(NetworkVerdict(facts));
+        b.AppendLine(VerdictMark(facts) + NetworkVerdict(facts));
         b.AppendLine();
         foreach (var x in Rows(gatewayPing, "results"))
             b.AppendLine(Ping("Router", x));
@@ -267,10 +283,10 @@ public static class PlainReport
         foreach (var x in Rows(dns, "lookups"))
             b.AppendLine(x.TryGetProperty("addresses", out _)
                 ? $"Navneopslag {Str(x, "name")}: OK ({Num(x, "ms"):0} ms)"
-                : $"Navneopslag {Str(x, "name")}: FEJL ({Str(x, "error")})");
+                : $"{Problem} Navneopslag {Str(x, "name")}: FEJL ({Str(x, "error")})");
         b.AppendLine(Bool(tcp, "connected")
             ? $"Forbindelse til {Str(tcp, "host")}:{Str(tcp, "port")}: OK ({Num(tcp, "ms"):0} ms)"
-            : $"Forbindelse til {Str(tcp, "host")}:{Str(tcp, "port")}: FEJL ({Str(tcp, "error")})");
+            : $"{Problem} Forbindelse til {Str(tcp, "host")}:{Str(tcp, "port")}: FEJL ({Str(tcp, "error")})");
         return b.ToString().TrimEnd();
     }
 

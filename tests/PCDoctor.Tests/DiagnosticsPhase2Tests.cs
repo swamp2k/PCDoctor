@@ -394,6 +394,26 @@ public class ResourcesAndHardwareReportTests
         Assert.Contains("mangler driver (kode 28)", text);
     }
 
+    [Fact]
+    public void Report_lines_carry_the_marks_the_diagnostics_page_turns_into_lights()
+    {
+        var hw = JsonDocument.Parse("""
+            {"gpu":[{"Name":"GTX 1060","DriverVersion":"1","DriverDate":"20220801000000.000000-000"}],
+             "disks":[{"DeviceID":"C:","Size":"511101108224","FreeSpace":"21474836480"}]}
+            """).RootElement;
+        var lines = PlainReport.Hardware(hw).Split('\n');
+        Assert.StartsWith(PlainReport.Notice, lines.Single(l => l.Contains("GTX 1060")));
+        Assert.Contains(PlainReport.Problem, lines.Single(l => l.Contains("C:")));
+
+        var events = JsonDocument.Parse("""
+            {"total_events":2,"groups":[{"last":"2026-10-13T21:00:00","level":"critical","source":"Kernel-Power","event_id":41,"count":1},
+                                        {"last":"2026-10-13T20:00:00","level":"error","source":"Application Error","event_id":1000,"count":1}]}
+            """).RootElement;
+        string text = PlainReport.Events(events);
+        Assert.Contains($"{PlainReport.Problem} 13-10 21:00  KRITISK Kernel-Power (41)", text);
+        Assert.Contains($"{PlainReport.Notice} 13-10 20:00  Application Error (1000)", text);
+    }
+
     [WindowsFact]
     public async Task Hardware_tool_lists_problem_devices()
     {

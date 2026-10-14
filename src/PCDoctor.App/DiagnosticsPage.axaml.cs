@@ -10,9 +10,9 @@ namespace PCDoctor.App;
 
 /// <summary>
 /// The Diagnostics page: runs the same read-only tools the agent uses, directly, without AI or an API key,
-/// and shows the result in plain Danish with the raw data underneath.
+/// and shows the result in plain Danish with a red, yellow or green light per line and the raw data underneath.
 /// </summary>
-public partial class DiagnosticsWindow : Window
+public partial class DiagnosticsPage : UserControl
 {
     static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
@@ -23,15 +23,14 @@ public partial class DiagnosticsWindow : Window
     /// <summary>A tab: what it checks, how to run it, and what to ask the agent about it.</summary>
     sealed record Check(string Header, string Intro, Func<CancellationToken, Task<(string Text, string Raw)>> Run, string Question);
 
-    public DiagnosticsWindow() : this([], _ => false) { }
+    public DiagnosticsPage() : this([], _ => false) { }
 
     /// <param name="ask">Sends a question to the chat. Returns false if PC Doctor is busy.</param>
-    public DiagnosticsWindow(IEnumerable<ITool> tools, Func<string, bool> ask)
+    public DiagnosticsPage(IEnumerable<ITool> tools, Func<string, bool> ask)
     {
         InitializeComponent();
         _tools = tools.ToDictionary(t => t.Name);
         _ask = ask;
-        Closing += (_, _) => _closing.Cancel();
 
         Check[] checks =
         [
@@ -102,67 +101,93 @@ public partial class DiagnosticsWindow : Window
         foreach (var check in checks)
             Tabs.Items.Add(BuildTab(check));
         Tabs.SelectionChanged += (_, _) => ((Tabs.SelectedItem as TabItem)?.Tag as Action)?.Invoke();
-        Opened += (_, _) => ((Tabs.SelectedItem as TabItem)?.Tag as Action)?.Invoke();
+        AttachedToVisualTree += (_, _) => ((Tabs.SelectedItem as TabItem)?.Tag as Action)?.Invoke();
         Tabs.SelectedIndex = 0;
     }
 
+    /// <summary>Stops running tests when the app closes.</summary>
+    public void Shutdown() => _closing.Cancel();
+
     TabItem BuildTab(Check check)
     {
-        var runButton = new Button { Content = "Kør igen", MinWidth = 100 };
-        var askButton = new Button { Content = "Spørg PC Doctor om dette", IsEnabled = false };
-        var status = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Margin = new(12, 0, 0, 0), Opacity = 0.75 };
-        var result = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 14 };
+        var runButton = new Button { Content = "Kør igen" };
+        var askButton = new Button { Content = "Spørg PC Doctor", IsEnabled = false };
+        askButton.Classes.Add("accent");
+        var bigLight = Status.Dot(Light.None, 22);
+        var verdict = new TextBlock { Text = "Undersøger…" };
+        verdict.Classes.Add("h2");
+        var status = new TextBlock { FontSize = 13 };
+        status.Classes.Add("muted");
+        var rows = new StackPanel { Spacing = 2 };
         var raw = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, FontFamily = new FontFamily("Consolas,Menlo,monospace"), FontSize = 12 };
-        var rawExpander = new Expander { Header = "Vis rådata (det samme som PC Doctor ser)", Content = raw, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new(0, 12, 0, 0), IsVisible = false };
+        var rawExpander = new Expander { Header = "Vis rådata", Content = raw, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new(0, 12, 0, 0), IsVisible = false };
 
-        var top = new DockPanel { Margin = new(0, 8, 0, 8) };
-        DockPanel.SetDock(askButton, Dock.Right);
-        top.Children.Add(askButton);
-        var left = new StackPanel { Orientation = Orientation.Horizontal };
-        left.Children.Add(runButton);
-        left.Children.Add(status);
-        top.Children.Add(left);
-
-        var body = new StackPanel();
-        body.Children.Add(result);
-        body.Children.Add(rawExpander);
-
-        var panel = new DockPanel { Margin = new(0, 8, 0, 0) };
-        var intro = new TextBlock { Text = check.Intro, TextWrapping = TextWrapping.Wrap, Opacity = 0.8 };
-        DockPanel.SetDock(intro, Dock.Top);
-        DockPanel.SetDock(top, Dock.Top);
-        panel.Children.Add(intro);
-        panel.Children.Add(top);
-        panel.Children.Add(new Border
+        var top = new Border { Margin = new(0, 0, 0, 12) };
+        top.Classes.Add("card");
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        buttons.Children.Add(runButton);
+        buttons.Children.Add(askButton);
+        var head = new DockPanel();
+        DockPanel.SetDock(buttons, Dock.Right);
+        head.Children.Add(buttons);
+        head.Children.Add(new StackPanel
         {
-            BorderBrush = Brushes.Gray, BorderThickness = new(1), CornerRadius = new(4), Padding = new(10),
-            Child = new ScrollViewer { Content = body },
+            Orientation = Orientation.Horizontal, Spacing = 14,
+            Children = { bigLight, new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { verdict, status } } },
         });
+        top.Child = head;
+
+        var list = new Border { Padding = new(18, 10) };
+        list.Classes.Add("card");
+        list.Child = new ScrollViewer { Content = new StackPanel { Children = { rows, rawExpander } } };
+
+        var panel = new DockPanel();
+        DockPanel.SetDock(top, Dock.Top);
+        panel.Children.Add(top);
+        panel.Children.Add(list);
+
+        var tabLight = Status.Dot(Light.None, 8);
+        var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { tabLight, new TextBlock { Text = check.Header } } };
+        ToolTip.SetTip(header, check.Intro);
 
         bool started = false, running = false;
+        void ShowVerdict(Light light, string title, string detail)
+        {
+            bigLight.Fill = tabLight.Fill = Status.Of(light);
+            verdict.Text = title;
+            status.Text = detail;
+        }
+
         async Task RunAsync()
         {
             if (running) return;
             running = started = true;
             runButton.IsEnabled = false;
-            status.Text = "Undersøger…";
+            ShowVerdict(Light.None, "Undersøger…", check.Intro);
             try
             {
                 var (text, rawText) = await check.Run(_closing.Token);
-                result.Text = text;
+                var lights = ShowRows(rows, text);
                 raw.Text = rawText;
                 rawExpander.IsVisible = true;
                 askButton.IsEnabled = true;
-                status.Text = $"Opdateret {DateTime.Now:HH:mm:ss}";
+                int red = lights.Count(l => l == Light.Red), amber = lights.Count(l => l == Light.Amber);
+                var parts = new List<string>();
+                if (red > 0) parts.Add($"{red} skal ordnes");
+                if (amber > 0) parts.Add($"{amber} bør tjekkes");
+                parts.Add($"opdateret {DateTime.Now:HH:mm}");
+                if (red > 0) ShowVerdict(Light.Red, "Noget skal ordnes", string.Join(" · ", parts));
+                else if (amber > 0) ShowVerdict(Light.Amber, "Noget bør tjekkes", string.Join(" · ", parts));
+                else ShowVerdict(Light.Green, "Ingen problemer fundet", string.Join(" · ", parts));
             }
             catch (OperationCanceledException)
             {
-                return; // window closed
+                return; // app closed
             }
             catch (Exception ex)
             {
-                result.Text = $"Testen fejlede: {ex.Message}";
-                status.Text = "";
+                rows.Children.Clear();
+                ShowVerdict(Light.Amber, "Testen kunne ikke køre", ex.Message);
             }
             finally
             {
@@ -173,11 +198,53 @@ public partial class DiagnosticsWindow : Window
 
         runButton.Click += async (_, _) => await RunAsync();
         askButton.Click += (_, _) => status.Text = _ask(check.Question)
-            ? "Spørgsmålet er sendt til PC Doctor i hovedvinduet."
+            ? "Spørgsmålet er sendt til PC Doctor."
             : "PC Doctor er optaget. Vent til den er færdig, og prøv igen.";
 
         // Run once, the first time the tab is shown.
-        return new TabItem { Header = check.Header, Content = panel, Tag = new Action(() => { if (!started) _ = RunAsync(); }) };
+        return new TabItem { Header = header, Content = panel, Tag = new Action(() => { if (!started) _ = RunAsync(); }) };
+    }
+
+    /// <summary>
+    /// Shows a report as rows: a light per line (red for a problem, yellow for a notice, grey for a plain fact),
+    /// "Heading:" lines as small headings, and indented lines indented. Returns the lights shown.
+    /// </summary>
+    static List<Light> ShowRows(StackPanel rows, string text)
+    {
+        rows.Children.Clear();
+        var lights = new List<Light>();
+        foreach (string raw in text.Split('\n'))
+        {
+            string line = raw.TrimEnd('\r');
+            if (line.Trim().Length == 0)
+            {
+                rows.Children.Add(new Border { Height = 8 });
+                continue;
+            }
+            bool indented = line.StartsWith("  ");
+            var light = Status.OfLine(line);
+            string shown = Status.WithoutMarker(line);
+            if (!indented && light == Light.None && shown.EndsWith(':'))
+            {
+                var heading = new TextBlock { Text = shown.TrimEnd(':').ToUpperInvariant(), Margin = new(0, 10, 0, 4) };
+                heading.Classes.Add("label");
+                rows.Children.Add(heading);
+                continue;
+            }
+            lights.Add(light);
+            var row = new DockPanel { Margin = new(indented ? 22 : 0, 5, 0, 5) };
+            var dot = Status.Dot(light, light == Light.None ? 6 : 10);
+            dot.Margin = new(light == Light.None ? 2 : 0, 0, light == Light.None ? 16 : 12, 0);
+            DockPanel.SetDock(dot, Dock.Left);
+            row.Children.Add(dot);
+            row.Children.Add(new SelectableTextBlock
+            {
+                Text = shown, TextWrapping = TextWrapping.Wrap, FontSize = 14,
+                FontWeight = light == Light.None ? FontWeight.Normal : FontWeight.SemiBold,
+            });
+            rows.Children.Add(row);
+        }
+        return lights;
     }
 
     /// <summary>Runs a built-in read-only tool directly. These never start a shell, so no permission check is needed here.</summary>

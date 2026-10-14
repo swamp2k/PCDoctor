@@ -1,22 +1,24 @@
+using Avalonia.Layout;
 using Avalonia.Media;
 using PCDoctor.Core;
 
 namespace PCDoctor.App;
 
-/// <summary>One bubble in the chat.</summary>
+/// <summary>One bubble in the chat. Your own messages sit to the right, PC Doctor's to the left.</summary>
 public sealed class ChatItem
 {
     public required string Who { get; init; }
     public required string Text { get; init; }
     public required IBrush Background { get; init; }
+    public HorizontalAlignment Align { get; init; } = HorizontalAlignment.Left;
 
     /// <summary>The chat bubble for an activity event, or null if the event is not shown in the chat.</summary>
     public static ChatItem? FromEvent(AgentEvent e) => e.Kind switch
     {
-        AgentEventKind.UserMessage => new() { Who = "Dig", Text = e.Title, Background = Brush.Parse("#223399FF") },
-        AgentEventKind.AssistantMessage => new() { Who = "PC Doctor", Text = e.Title, Background = Brush.Parse("#2200A86B") },
-        AgentEventKind.Error => new() { Who = "Fejl", Text = e.Detail is null ? e.Title : $"{e.Title}\n\n{e.Detail}", Background = Brush.Parse("#33FF0000") },
-        AgentEventKind.Info when e.Title.StartsWith("Stoppet") => new() { Who = "PC Doctor", Text = e.Title, Background = Brush.Parse("#22808080") },
+        AgentEventKind.UserMessage => new() { Who = "DIG", Text = e.Title, Background = Status.Brush("UserBubbleBrush"), Align = HorizontalAlignment.Right },
+        AgentEventKind.AssistantMessage => new() { Who = "PC DOCTOR", Text = e.Title, Background = Status.Brush("CardHighBrush") },
+        AgentEventKind.Error => new() { Who = "FEJL", Text = e.Detail is null ? e.Title : $"{e.Title}\n\n{e.Detail}", Background = Status.Brush("RedSoftBrush") },
+        AgentEventKind.Info when e.Title.StartsWith("Stoppet") => new() { Who = "PC DOCTOR", Text = e.Title, Background = Status.Brush("CardHighBrush") },
         _ => null,
     };
 }
@@ -29,20 +31,18 @@ public sealed class ActivityItem
         TimeText = e.Time.ToString("HH:mm:ss");
         Title = e.Title.Length > 160 ? e.Title[..160] + "…" : e.Title;
         Detail = e.Detail ?? (e.Title.Length > 160 ? e.Title : "");
-        Icon = e.Kind switch
+        Dot = e.Kind switch
         {
-            AgentEventKind.UserMessage => "💬",
-            AgentEventKind.AssistantMessage => "🩺",
-            AgentEventKind.ToolStarted => "▶",
-            AgentEventKind.ToolFinished => "✔",
-            AgentEventKind.ToolDenied => "⛔",
-            AgentEventKind.Error => "⚠",
-            _ => "ℹ",
+            AgentEventKind.ToolStarted => Status.Brush("AccentBrush"),
+            AgentEventKind.ToolFinished => Status.Of(Light.Green),
+            AgentEventKind.ToolDenied or AgentEventKind.Error => Status.Of(Light.Red),
+            _ => Status.Of(Light.None),
         };
     }
 
     public string TimeText { get; }
-    public string Icon { get; }
+    /// <summary>Orange while a tool runs, green when it finished, red when it was refused or failed.</summary>
+    public IBrush Dot { get; }
     public string Title { get; }
     public string Detail { get; }
     public bool HasDetail => Detail.Length > 0;
@@ -54,7 +54,7 @@ public sealed class SessionListItem(PCDoctor.Storage.SessionSummary s)
     public long Id { get; } = s.Id;
     public string Title { get; } = s.Title;
     public string Subtitle { get; } =
-        $"{s.Started.LocalDateTime:dd-MM-yyyy HH:mm} · {s.ToolCalls} værktøjskald · {s.ApiCalls} API-kald{(s.HadError ? " · ⚠ fejl" : "")}";
+        $"{s.Started.LocalDateTime:dd-MM-yyyy HH:mm} · {s.ToolCalls} værktøjskald · {s.ApiCalls} API-kald{(s.HadError ? " · fejl" : "")}";
 }
 
 /// <summary>One API call in the history's technical view.</summary>

@@ -1,0 +1,203 @@
+<!--
+  The "Cockpit" look: dark slate, one orange accent, and red / yellow / green status lights.
+  Every colour lives here, so the whole app changes look by editing this one file.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:PCDoctor.App">
+    <Styles.Resources>
+        <SolidColorBrush x:Key="SidebarBrush" Color="#0F141D"/>
+        <SolidColorBrush x:Key="PageBrush" Color="#151B27"/>
+        <SolidColorBrush x:Key="CardBrush" Color="#1B2231"/>
+        <SolidColorBrush x:Key="CardHighBrush" Color="#232C3E"/>
+        <SolidColorBrush x:Key="LineBrush" Color="#263043"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#E6EAF2"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#9AA4B8"/>
+        <SolidColorBrush x:Key="DimBrush" Color="#7A8499"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#FF8A3D"/>
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#FFA366"/>
+        <SolidColorBrush x:Key="OnAccentBrush" Color="#151B27"/>
+        <SolidColorBrush x:Key="NavActiveBrush" Color="#1E2636"/>
+        <SolidColorBrush x:Key="UserBubbleBrush" Color="#2E3A52"/>
+        <SolidColorBrush x:Key="RedBrush" Color="#F05252"/>
+        <SolidColorBrush x:Key="AmberBrush" Color="#F2B53A"/>
+        <SolidColorBrush x:Key="GreenBrush" Color="#31C48D"/>
+        <SolidColorBrush x:Key="RedSoftBrush" Color="#2A1A20"/>
+        <SolidColorBrush x:Key="AmberSoftBrush" Color="#2A2416"/>
+        <SolidColorBrush x:Key="GreenSoftBrush" Color="#16261F"/>
+
+        <!-- Fluent's fold-out panels (Expander) on the card colours instead of near-black -->
+        <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="#232C3E"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="#2C3649"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="#2C3649"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBackgroundDisabled" Color="#1E2636"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="Transparent"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="Transparent"/>
+        <SolidColorBrush x:Key="ExpanderHeaderBorderBrushDisabled" Color="Transparent"/>
+        <SolidColorBrush x:Key="ExpanderContentBackground" Color="#1E2636"/>
+        <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent"/>
+    </Styles.Resources>
+
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource PageBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+
+    <!-- Text -->
+    <Style Selector="TextBlock.h1">
+        <Setter Property="FontSize" Value="24"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="TextBlock.h2">
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="TextBlock.muted, SelectableTextBlock.muted">
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="LetterSpacing" Value="1.2"/>
+        <Setter Property="Foreground" Value="{StaticResource DimBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.big">
+        <Setter Property="FontSize" Value="22"/>
+        <Setter Property="FontWeight" Value="ExtraBold"/>
+    </Style>
+
+    <!-- Cards -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="16"/>
+    </Style>
+
+    <!-- Status lights -->
+    <Style Selector="Ellipse.dot">
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="Height" Value="10"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Fill" Value="{StaticResource DimBrush}"/>
+    </Style>
+
+    <!-- Buttons -->
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{StaticResource CardHighBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#2C3649"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+    <Style Selector="Button:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource CardHighBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+
+    <Style Selector="Button.accent">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentHoverBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}"/>
+    </Style>
+    <Style Selector="Button.accent:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}"/>
+    </Style>
+
+    <Style Selector="Button.record">
+        <Setter Property="Background" Value="{StaticResource RedBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="Button.record:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#F36B6B"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Button.record:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource RedBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style Selector="Button.quiet">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="MinHeight" Value="32"/>
+    </Style>
+
+    <!-- Sidebar navigation -->
+    <Style Selector="Button.nav">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="MinHeight" Value="44"/>
+        <Setter Property="Padding" Value="12,0"/>
+    </Style>
+    <Style Selector="Button.nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="#182030"/>
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+    </Style>
+    <Style Selector="Button.nav.active">
+        <Setter Property="Background" Value="{StaticResource NavActiveBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="Button.nav.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource NavActiveBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+    <Style Selector="Button.nav.active app|Icon">
+        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+    </Style>
+
+    <!-- Inputs -->
+    <Style Selector="TextBox">
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+    </Style>
+    <!-- A text box without its own frame, for use inside a card (the chat input) -->
+    <Style Selector="TextBox.bare">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontSize" Value="15"/>
+    </Style>
+    <Style Selector="TextBox.bare:pointerover /template/ Border#PART_BorderElement, TextBox.bare:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+        <Setter Property="MinHeight" Value="40"/>
+    </Style>
+
+    <!-- Tabs (Diagnostik, Historik) -->
+    <Style Selector="TabItem">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="10,0"/>
+    </Style>
+
+    <Style Selector="Expander">
+        <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+</Styles>

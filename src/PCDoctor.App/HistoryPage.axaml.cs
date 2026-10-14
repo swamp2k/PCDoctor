@@ -10,16 +10,16 @@ namespace PCDoctor.App;
 /// The History page: earlier conversations from the SQLite history, with the chat, every tool call,
 /// and the exact API requests and responses (secrets masked).
 /// </summary>
-public partial class HistoryWindow : Window
+public partial class HistoryPage : UserControl
 {
     static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     readonly SessionStore? _store;
     bool _confirmDelete;
 
-    public HistoryWindow() : this(null) { }
+    public HistoryPage() : this(null) { }
 
-    public HistoryWindow(SessionStore? store)
+    public HistoryPage(SessionStore? store)
     {
         InitializeComponent();
         _store = store;
@@ -34,7 +34,8 @@ public partial class HistoryWindow : Window
         Reload();
     }
 
-    void Reload()
+    /// <summary>Reads the list again, e.g. when the page is shown after a new conversation.</summary>
+    public void Reload()
     {
         long? selected = (SessionList.SelectedItem as SessionListItem)?.Id;
         List<SessionListItem> items = [];
@@ -90,7 +91,7 @@ public partial class HistoryWindow : Window
         if (x is null) return;
         string text = part == "request" ? x.Request : x.Response ?? x.Error ?? "";
         string title = part == "request" ? "Sendt til AI'en (hemmeligheder skjult)" : "Svar fra AI'en";
-        await new TextWindow(title, PrettyJson(text)).ShowDialog(this);
+        await new TextWindow(title, PrettyJson(text)).ShowDialog((Window)TopLevel.GetTopLevel(this)!);
     }
 
     void DeleteSelected()

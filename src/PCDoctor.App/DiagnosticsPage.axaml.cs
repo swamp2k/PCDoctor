@@ -71,24 +71,6 @@ public partial class DiagnosticsPage : UserControl
                 },
                 "Kig på fejlene i Windows' hændelseslog fra de sidste 7 dage. Er der noget alvorligt, og hvad betyder det?"),
 
-            new("Minecraft", "Finder Minecraft (officiel launcher, CurseForge, Prism, Modrinth m.fl.), læser den nyeste crash-rapport og tjekker mods: mangler der nogen, er der dubletter, eller passer de ikke til loaderen?",
-                async ct =>
-                {
-                    var logs = Tool("gaming_logs", "{}", ct);
-                    var mods = Tool("minecraft_mods", "{}", ct);
-                    var (r, m) = (await logs, await mods);
-                    return (PlainReport.Minecraft(r) + "\n\n" + PlainReport.Mods(m), Raw(r) + "\n\n" + Raw(m));
-                },
-                "Hvorfor crashede Minecraft senest? Kig i crash-rapporterne, mine mods og Windows' hændelseslog omkring tidspunktet."),
-
-            new("Andre spil", "Finder logfiler fra Fortnite, Roblox, Rocket League og andre Unreal- og Unity-spil, og læser den nyeste for faresignaler.",
-                async ct =>
-                {
-                    var r = await Tool("other_game_logs", "{}", ct);
-                    return (PlainReport.OtherGames(r), Raw(r));
-                },
-                "Kig i logfilerne fra de spil jeg har spillet for nylig. Er der tegn på, hvorfor de crasher eller hakker?"),
-
             new("Spiltjenester", "Er spillet nede, eller er det vores internet? Læser de officielle statussider (Epic Games/Fortnite, Discord) og tester, om PC'en kan nå spillenes servere. Tager ca. 10 sekunder.",
                 async ct =>
                 {
@@ -100,6 +82,7 @@ public partial class DiagnosticsPage : UserControl
 
         foreach (var check in checks)
             Tabs.Items.Add(BuildTab(check));
+        Tabs.Items.Insert(4, BuildGamesTab());
         Tabs.SelectionChanged += (_, _) => ((Tabs.SelectedItem as TabItem)?.Tag as Action)?.Invoke();
         AttachedToVisualTree += (_, _) => ((Tabs.SelectedItem as TabItem)?.Tag as Action)?.Invoke();
         Tabs.SelectedIndex = 0;
@@ -151,6 +134,7 @@ public partial class DiagnosticsPage : UserControl
         ToolTip.SetTip(header, check.Intro);
 
         bool started = false, running = false;
+        List<string> flagged = [];
         void ShowVerdict(Light light, string title, string detail)
         {
             bigLight.Fill = tabLight.Fill = Status.Of(light);
@@ -168,6 +152,7 @@ public partial class DiagnosticsPage : UserControl
             {
                 var (text, rawText) = await check.Run(_closing.Token);
                 var lights = ShowRows(rows, text);
+                flagged = Flagged(text);
                 raw.Text = rawText;
                 rawExpander.IsVisible = true;
                 askButton.IsEnabled = true;
@@ -197,12 +182,37 @@ public partial class DiagnosticsPage : UserControl
         }
 
         runButton.Click += async (_, _) => await RunAsync();
-        askButton.Click += (_, _) => status.Text = _ask(check.Question)
+        // With problems found, PC Doctor is asked about exactly those; otherwise the tab's general question.
+        askButton.Click += (_, _) => status.Text = _ask(flagged.Count == 0 ? check.Question :
+                $"Diagnostik ({check.Header}) fandt {(flagged.Count == 1 ? "dette problem" : "disse problemer")}:\n" +
+                string.Join("\n", flagged.Select(f => "- " + f)) +
+                $"\nUndersøg kun {(flagged.Count == 1 ? "det" : "dem")}: hvad betyder det, er det alvorligt, og hvad skal jeg gøre?")
             ? "Spørgsmålet er sendt til PC Doctor."
             : "PC Doctor er optaget. Vent til den er færdig, og prøv igen.";
 
         // Run once, the first time the tab is shown.
         return new TabItem { Header = header, Content = panel, Tag = new Action(() => { if (!started) _ = RunAsync(); }) };
+    }
+
+    /// <summary>The marked lines of a report, each with the indented lines under it (e.g. which device has a problem).</summary>
+    static List<string> Flagged(string text)
+    {
+        var result = new List<string>();
+        bool under = false;
+        foreach (string raw in text.Split('\n'))
+        {
+            string line = raw.TrimEnd('\r');
+            if (line.StartsWith("  ") && Status.OfLine(line) == Light.None)
+            {
+                if (under && line.Trim().Length > 0)
+                    result[^1] += " " + line.Trim();
+                continue;
+            }
+            under = Status.OfLine(line) != Light.None;
+            if (under)
+                result.Add(Status.WithoutMarker(line));
+        }
+        return result;
     }
 
     /// <summary>

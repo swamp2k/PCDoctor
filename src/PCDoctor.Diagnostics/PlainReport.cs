@@ -368,7 +368,8 @@ public static class PlainReport
     }
 
     /// <summary>The warning-sign hints are English for the model; the page shows them in Danish.</summary>
-    static string SignDa(string hint) => hint switch
+    /// <summary>A warning sign from a game log (English hint) in plain Danish.</summary>
+    public static string SignDa(string hint) => hint switch
     {
         _ when hint.StartsWith("The graphics card or its driver") => "Grafikkortet eller dets driver holdt op med at svare (ofte driver, varme eller overclock).",
         _ when hint.StartsWith("The graphics card ran out") => "Grafikkortet løb tør for sin egen hukommelse (VRAM). Skru ned for grafik eller opløsning.",

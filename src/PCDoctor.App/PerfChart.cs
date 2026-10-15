@@ -9,13 +9,13 @@ namespace PCDoctor.App;
 /// <summary>A simple line chart of a recording: CPU, GPU, RAM and disk from 0 to 100 % over time.</summary>
 public sealed class PerfChart : Control
 {
-    public static readonly IBrush CpuBrush = Brush.Parse("#3B82F6");
-    public static readonly IBrush GpuBrush = Brush.Parse("#22A35A");
-    public static readonly IBrush RamBrush = Brush.Parse("#F08A24");
-    public static readonly IBrush DiskBrush = Brush.Parse("#A855F7");
+    public static readonly IBrush CpuBrush = Brush.Parse("#FF8A3D");
+    public static readonly IBrush GpuBrush = Brush.Parse("#4F9DFF");
+    public static readonly IBrush RamBrush = Brush.Parse("#A78BFA");
+    public static readonly IBrush DiskBrush = Brush.Parse("#2DD4BF");
 
-    static readonly IPen GridPen = new Pen(Brush.Parse("#40808080"), 1);
-    static readonly IBrush LabelBrush = Brush.Parse("#909090");
+    static readonly IPen GridPen = new Pen(Brush.Parse("#263043"), 1);
+    static readonly IBrush LabelBrush = Brush.Parse("#7A8499");
 
     IReadOnlyList<PerfSample> _samples = [];
 
@@ -66,7 +66,7 @@ public sealed class PerfChart : Control
                 }
                 if (open) g.EndFigure(false);
             }
-            c.DrawGeometry(null, new Pen(brush, 1.8), geo);
+            c.DrawGeometry(null, new Pen(brush, 2, lineJoin: PenLineJoin.Round), geo);
         }
     }
 

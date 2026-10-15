@@ -24,9 +24,12 @@ public partial class MainWindow : Window
     readonly SessionStore? _store = Services.OpenHistory();
     long? _sessionId;
     CancellationTokenSource? _running;
-    RecordingWindow? _recordingWindow;
-    DiagnosticsWindow? _diagnosticsWindow;
-    HistoryWindow? _historyWindow;
+    DiagnosticsPage? _diagnosticsPage;
+    RecordingPage? _stutterPage, _recordingPage;
+    HistoryPage? _historyPage;
+    readonly IPerfSampler? _gaugeSampler = Services.CreatePerfSampler();
+    readonly DispatcherTimer _gaugeTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+    bool _sampling;
 
     public MainWindow()
     {
@@ -49,10 +52,15 @@ public partial class MainWindow : Window
         }, RoutingStrategies.Tunnel);
         SettingsButton.Click += async (_, _) => await OpenSettingsAsync();
         NewChatButton.Click += (_, _) => NewConversation();
-        RecordButton.Click += (_, _) => OpenRecording(gameMode: false);
-        StutterButton.Click += (_, _) => OpenRecording(gameMode: true);
-        DiagnosticsButton.Click += (_, _) => OpenDiagnostics();
-        HistoryButton.Click += (_, _) => OpenHistory();
+        ChatNavButton.Click += (_, _) => ShowPage(ChatPage, ChatNavButton);
+        RecordButton.Click += (_, _) => ShowPage(_recordingPage ??= NewRecordingPage(gameMode: false), RecordButton);
+        StutterButton.Click += (_, _) => ShowPage(_stutterPage ??= NewRecordingPage(gameMode: true), StutterButton);
+        DiagnosticsButton.Click += (_, _) => ShowPage(_diagnosticsPage ??= new DiagnosticsPage(_tools, Ask), DiagnosticsButton);
+        HistoryButton.Click += (_, _) =>
+        {
+            ShowPage(_historyPage ??= new HistoryPage(_store), HistoryButton);
+            _historyPage.Reload();
+        };
         ShowRequestButton.Click += async (_, _) =>
             await new TextWindow("Seneste API-forespørgsel (hemmeligheder skjult)",
                 _model?.LastRequestJson is { } json ? SecretMasker.Apply(json, _secrets.Read()) : "Ingen forespørgsel sendt endnu.").ShowDialog(this);
@@ -60,6 +68,50 @@ public partial class MainWindow : Window
         SetMode(PermissionMode.ReadOnly, log: false);
         RefreshKeyState();
         StatusText.Text = ReadyText;
+
+        GaugeRow.IsVisible = _gaugeSampler is not null;
+        _gaugeTimer.Tick += async (_, _) => await UpdateGaugesAsync();
+        if (_gaugeSampler is not null)
+            _gaugeTimer.Start();
+        Closing += (_, _) =>
+        {
+            _gaugeTimer.Stop();
+            _diagnosticsPage?.Shutdown();
+            _stutterPage?.Shutdown();
+            _recordingPage?.Shutdown();
+        };
+    }
+
+    /// <summary>Shows one page and marks its sidebar button. Pages are kept, so a recording keeps going while you chat.</summary>
+    void ShowPage(Control page, Button nav)
+    {
+        if (!PageHost.Children.Contains(page))
+            PageHost.Children.Add(page);
+        foreach (var child in PageHost.Children)
+            child.IsVisible = child == page;
+        foreach (var button in new[] { ChatNavButton, DiagnosticsButton, StutterButton, RecordButton, HistoryButton })
+            button.Classes.Set("active", button == nav);
+    }
+
+    RecordingPage NewRecordingPage(bool gameMode) =>
+        new(Services.CreatePerfSampler(), new PerfRecordingStore(), Ask, gameMode);
+
+    /// <summary>The live gauges on the chat page. Only measures while the chat page is shown.</summary>
+    async Task UpdateGaugesAsync()
+    {
+        if (_gaugeSampler is null || _sampling || !ChatPage.IsVisible || !IsActive)
+            return;
+        _sampling = true;
+        try
+        {
+            var s = await Task.Run(_gaugeSampler.Read);
+            CpuTile.Show(s.Cpu);
+            GpuTile.Show(s.Gpu);
+            RamTile.Show(s.Ram);
+            DiskTile.Show(s.Disk);
+        }
+        catch (Exception) { /* the gauges are a nicety; never let them break the app */ }
+        finally { _sampling = false; }
     }
 
     string ReadyText => _store is null
@@ -76,12 +128,14 @@ public partial class MainWindow : Window
     void SetMode(PermissionMode mode, bool log = true)
     {
         _mode = mode;
-        (ModeText.Text, ModeBanner.Background) = mode switch
+        (ModeText.Text, Light light) = mode switch
         {
-            PermissionMode.ReadOnly => ("Read-only: kun indbyggede, ikke-ændrende værktøjer. Ingen fri PowerShell.", Brush.Parse("#2232CD32")),
-            PermissionMode.Assisted => ("Assisted: agenten må foreslå PowerShell-kommandoer, men du skal godkende hver eneste én, før den køres.", Brush.Parse("#33FFD700")),
-            _ => ("YOLO: agenten kører PowerShell-kommandoer uden at spørge, med dine almindelige Windows-rettigheder (ikke administrator). Det er ikke risikofrit.", Brush.Parse("#33FF4500")),
+            PermissionMode.ReadOnly => ("Read-only: PC Doctor kigger kun og ændrer intet.", Light.Green),
+            PermissionMode.Assisted => ("Assisted: PC Doctor må foreslå PowerShell-kommandoer. Du godkender hver eneste én.", Light.Amber),
+            _ => ("YOLO: PC Doctor kører PowerShell-kommandoer uden at spørge (ikke som administrator). Det er ikke risikofrit.", Light.Red),
         };
+        ModeBanner.Background = Status.SoftOf(light);
+        ModeDot.Fill = Status.Of(light);
         if (log)
             AddActivity(new AgentEvent(AgentEventKind.Info, $"Tilstand skiftet til {ModeName(mode)}"));
     }
@@ -241,48 +295,13 @@ public partial class MainWindow : Window
             return await dialog.ShowDialog<bool>(this);
         });
 
-    void OpenRecording(bool gameMode)
-    {
-        if (_recordingWindow is not null)
-        {
-            _recordingWindow.Activate();
-            return;
-        }
-        _recordingWindow = new RecordingWindow(Services.CreatePerfSampler(), new PerfRecordingStore(), Ask, gameMode);
-        _recordingWindow.Closed += (_, _) => _recordingWindow = null;
-        _recordingWindow.Show(this);
-    }
-
-    void OpenDiagnostics()
-    {
-        if (_diagnosticsWindow is not null)
-        {
-            _diagnosticsWindow.Activate();
-            return;
-        }
-        _diagnosticsWindow = new DiagnosticsWindow(_tools, Ask);
-        _diagnosticsWindow.Closed += (_, _) => _diagnosticsWindow = null;
-        _diagnosticsWindow.Show(this);
-    }
-
-    void OpenHistory()
-    {
-        if (_historyWindow is not null)
-        {
-            _historyWindow.Activate();
-            return;
-        }
-        _historyWindow = new HistoryWindow(_store);
-        _historyWindow.Closed += (_, _) => _historyWindow = null;
-        _historyWindow.Show(this);
-    }
-
     /// <summary>Puts a question in the chat and sends it, as if typed. False if an investigation is running.</summary>
     bool Ask(string question)
     {
         if (_running is not null)
             return false;
         InputBox.Text = question;
+        ShowPage(ChatPage, ChatNavButton);
         Activate();
         _ = SendAsync();
         return true;

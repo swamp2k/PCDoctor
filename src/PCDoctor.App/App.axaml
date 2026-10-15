@@ -1,8 +1,18 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="PCDoctor.App.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Dark">
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <!-- Fluent's own controls (drop-downs, tabs, check boxes) in the Cockpit colours. -->
+                <ColorPaletteResources x:Key="Dark" Accent="#FF8A3D" RegionColor="#151B27"
+                                       AltHigh="#151B27" AltMediumLow="#1B2231" ChromeMedium="#1B2231" ChromeMediumLow="#151B27"
+                                       ChromeLow="#0F141D" ChromeHigh="#2C3649" ChromeAltLow="#E6EAF2"
+                                       BaseHigh="#E6EAF2" BaseMedium="#9AA4B8" BaseMediumHigh="#C9D0DD" BaseLow="#263043"
+                                       ListLow="#1E2636" ListMedium="#263043"/>
+            </FluentTheme.Palettes>
+        </FluentTheme>
+        <StyleInclude Source="/Theme/Cockpit.axaml"/>
     </Application.Styles>
 </Application>

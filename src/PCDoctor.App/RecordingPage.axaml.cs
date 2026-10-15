@@ -6,8 +6,8 @@ using PCDoctor.Diagnostics;
 
 namespace PCDoctor.App;
 
-/// <summary>Start/stop a performance recording, then review it as a chart and a summary.</summary>
-public partial class RecordingWindow : Window
+/// <summary>Start/stop a performance recording, then review it as gauges, a chart and a summary.</summary>
+public partial class RecordingPage : UserControl
 {
     readonly IPerfSampler? _sampler;
     readonly PerfRecordingStore _store;
@@ -23,13 +23,13 @@ public partial class RecordingWindow : Window
     PerfRecording? _shown;
     bool _filling;
 
-    public RecordingWindow() : this(null, new PerfRecordingStore(), _ => false) { }
+    public RecordingPage() : this(null, new PerfRecordingStore(), _ => false) { }
 
     /// <param name="ask">Sends a question to the chat. Returns false if PC Doctor is busy.</param>
     /// <param name="gameMode">
     /// Opened as "Hvorfor hakker mit spil?": pick a running game, FPS on by default, and PC Doctor is asked automatically when the recording stops.
     /// </param>
-    public RecordingWindow(IPerfSampler? sampler, PerfRecordingStore store, Func<string, bool> ask, bool gameMode = false)
+    public RecordingPage(IPerfSampler? sampler, PerfRecordingStore store, Func<string, bool> ask, bool gameMode = false)
     {
         InitializeComponent();
         _sampler = sampler;
@@ -39,10 +39,8 @@ public partial class RecordingWindow : Window
 
         if (gameMode)
         {
-            Title = "Hvorfor hakker mit spil?";
-            IntroText.Text = "1. Start spillet. 2. Vælg det her (tryk \"Opdater listen\" hvis det ikke står der). 3. Tryk Start og spil, til det hakker. " +
-                             "4. Kom tilbage og tryk Stop. PC Doctor kigger så på optagelsen og forklarer, hvad der holdt spillet tilbage. " +
-                             "Den måler hele PC'en og spillet selv cirka én gang i sekundet, og FPS hvis du tillader det. Skærmen optages ikke.";
+            TitleText.Text = "Hvorfor hakker mit spil?";
+            IntroText.Text = "Start spillet og vælg det her. Tryk Start, og spil til det hakker. Kom tilbage og tryk Stop, så forklarer PC Doctor, hvad der holdt spillet tilbage.";
             FpsBox.IsChecked = OperatingSystem.IsWindows();
         }
         FpsBox.IsEnabled = OperatingSystem.IsWindows();
@@ -58,12 +56,6 @@ public partial class RecordingWindow : Window
             if (!_filling && RecordingBox.SelectedItem is Entry e && _store.Load(e.Id) is { } r)
                 Display(r);
         };
-        Closing += (_, _) =>
-        {
-            // Closing mid-recording keeps what was recorded so far.
-            _stop?.Cancel();
-            _recording?.Wait(TimeSpan.FromSeconds(3));
-        };
 
         if (_sampler is null)
         {
@@ -71,6 +63,13 @@ public partial class RecordingWindow : Window
             ElapsedText.Text = "Optagelse virker kun på Windows.";
         }
         FillList(select: null);
+    }
+
+    /// <summary>Called when the app closes. Closing mid-recording keeps what was recorded so far.</summary>
+    public void Shutdown()
+    {
+        _stop?.Cancel();
+        _recording?.Wait(TimeSpan.FromSeconds(3));
     }
 
     RunningProgram? SelectedGame => GameBox.SelectedItem is RunningProgram { ProcessName.Length: > 0 } g ? g : null;
@@ -95,7 +94,7 @@ public partial class RecordingWindow : Window
         var game = SelectedGame;
         if (_gameMode && game is null)
         {
-            ElapsedText.Text = "Vælg spillet først. Start det, og tryk \"Opdater listen\".";
+            ElapsedText.Text = "Vælg spillet først. Start det, og tryk på knappen ved siden af listen for at opdatere den.";
             return;
         }
         _sampler.Game = game?.ProcessName;
@@ -114,6 +113,8 @@ public partial class RecordingWindow : Window
         _shown = null;
         Chart.Samples = _live;
         SummaryText.Text = "";
+        FpsCard.IsVisible = false;
+        (CpuTile.Label, GpuTile.Label, RamTile.Label, DiskTile.Label) = ("CPU", "Grafikkort", "RAM", "Disk");
         SetRecording(true);
         ElapsedText.Text = $"Optager… 0:00 / {Max}";
 
@@ -151,6 +152,10 @@ public partial class RecordingWindow : Window
     {
         _live.Add(s);
         Chart.InvalidateVisual();
+        CpuTile.Show(s.Cpu);
+        GpuTile.Show(s.Gpu);
+        RamTile.Show(s.Ram);
+        DiskTile.Show(s.Disk);
         ElapsedText.Text = $"Optager… {Time(s.Seconds)} / {Max}";
     }
 
@@ -204,6 +209,32 @@ public partial class RecordingWindow : Window
         Chart.Samples = r.Samples;
         SummaryText.Text = Describe(r);
         AskButton.IsEnabled = _recording is null;
+
+        // Averages, coloured by how much of the time each part was close to 100 %.
+        var s = PerfSummary.From(r);
+        CpuTile.Label = "CPU snit";
+        GpuTile.Label = "Grafikkort snit";
+        RamTile.Label = "RAM snit";
+        DiskTile.Label = "Disk snit";
+        CpuTile.Show(s.Cpu.Average, Status.OfBusyTime(s.Cpu));
+        GpuTile.Show(s.Gpu?.Average, Status.OfBusyTime(s.Gpu));
+        RamTile.Show(s.Ram.Average, Status.OfBusyTime(s.Ram));
+        DiskTile.Show(s.Disk?.Average, Status.OfBusyTime(s.Disk));
+
+        FpsCard.IsVisible = r.Fps is not null;
+        if (r.Fps is { Measured: true } f)
+        {
+            FpsText.Text = $"{f.AverageFps:0} snit";
+            FpsDetail.Text = $"{f.OnePercentLowFps:0} i 1 % low · {f.Stutters} hak";
+            FpsDot.Fill = Status.Of(Status.OfFps(f.AverageFps));
+        }
+        else if (r.Fps is { } nf)
+        {
+            FpsText.Text = "–";
+            FpsDetail.Text = "Ikke målt";
+            ToolTip.SetTip(FpsCard, nf.Problem);
+            FpsDot.Fill = Status.Of(Light.None);
+        }
     }
 
     void Ask()
@@ -216,7 +247,7 @@ public partial class RecordingWindow : Window
             : $"Kig på min ydelsesoptagelse {_shown.Id} fra {_shown.Started.LocalDateTime:dd-MM-yyyy HH:mm} " +
               $"({Time(_shown.DurationSeconds)}). Hvad begrænsede ydelsen, og hvad kan jeg gøre ved det?";
         if (_ask(q))
-            ElapsedText.Text = "Spørgsmålet er sendt til PC Doctor i hovedvinduet.";
+            ElapsedText.Text = "Spørgsmålet er sendt til PC Doctor.";
         else
             ElapsedText.Text = "PC Doctor er optaget. Vent til den er færdig, og prøv igen.";
     }

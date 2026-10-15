@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:PCDoctor.App"
+             x:Class="PCDoctor.App.RecordingPage">
+    <DockPanel Margin="24,20">
+
+        <!-- Title, game and start/stop -->
+        <TextBlock DockPanel.Dock="Top" x:Name="TitleText" Classes="h1" Text="Optag ydelse"/>
+        <TextBlock DockPanel.Dock="Top" x:Name="IntroText" Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,2,0,14"
+                   Text="Tryk Start, brug PC'en som normalt, og tryk Stop. Stopper selv efter 15 minutter."/>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="0,0,0,8">
+            <ComboBox Grid.Column="0" x:Name="GameBox" Width="300"/>
+            <Button Grid.Column="1" x:Name="RefreshGamesButton" ToolTip.Tip="Opdater listen over spil" Padding="12,0" Margin="8,0,0,0">
+                <app:Icon Data="M20 11a8 8 0 1 0-2.3 5.7 M20 4v7h-7" Width="16" Height="16"/>
+            </Button>
+            <CheckBox Grid.Column="2" x:Name="FpsBox" Content="Mål FPS" ToolTip.Tip="Windows beder om administrator-tilladelse" Margin="16,0,0,0"/>
+            <Button Grid.Column="4" x:Name="StartButton" Classes="record" MinWidth="100">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Ellipse Width="10" Height="10" Fill="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="Start"/>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="5" x:Name="StopButton" Content="Stop" MinWidth="80" Margin="8,0,0,0" IsEnabled="False"/>
+        </Grid>
+        <TextBlock DockPanel.Dock="Top" x:Name="ElapsedText" FontWeight="SemiBold" Margin="0,0,0,14"/>
+
+        <!-- Averages (or live values while recording) -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,12,*,12,*,12,*,12,Auto" Margin="0,0,0,12">
+            <app:GaugeTile Grid.Column="0" x:Name="CpuTile" Label="CPU"/>
+            <app:GaugeTile Grid.Column="2" x:Name="GpuTile" Label="Grafikkort"/>
+            <app:GaugeTile Grid.Column="4" x:Name="RamTile" Label="RAM"/>
+            <app:GaugeTile Grid.Column="6" x:Name="DiskTile" Label="Disk"/>
+            <Border Grid.Column="8" x:Name="FpsCard" Classes="card" Padding="16,10" MinWidth="170" IsVisible="False">
+                <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Classes="label" Text="FPS"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Ellipse Classes="dot" x:Name="FpsDot"/>
+                        <TextBlock x:Name="FpsText" Classes="big"/>
+                    </StackPanel>
+                    <TextBlock x:Name="FpsDetail" Classes="muted" FontSize="12"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Bottom: earlier recordings, details, and ask -->
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,12,0,0">
+            <TextBlock Grid.Column="0" Classes="muted" Text="Optagelser" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox Grid.Column="1" x:Name="RecordingBox" Width="210"/>
+            <Button Grid.Column="3" x:Name="AskButton" Classes="accent" Content="Spørg PC Doctor om optagelsen" IsEnabled="False"/>
+        </Grid>
+        <Expander DockPanel.Dock="Bottom" Header="Alle detaljer" HorizontalAlignment="Stretch" Margin="0,12,0,0">
+            <ScrollViewer MaxHeight="180">
+                <SelectableTextBlock x:Name="SummaryText" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+            </ScrollViewer>
+        </Expander>
+
+        <!-- Chart -->
+        <Border Classes="card" Padding="14,12">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="18" Margin="4,0,0,8">
+                    <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="14" Height="3" CornerRadius="2" Background="{x:Static app:PerfChart.CpuBrush}" VerticalAlignment="Center"/><TextBlock Classes="muted" FontSize="13" Text="CPU"/></StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="14" Height="3" CornerRadius="2" Background="{x:Static app:PerfChart.GpuBrush}" VerticalAlignment="Center"/><TextBlock Classes="muted" FontSize="13" Text="Grafikkort"/></StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="14" Height="3" CornerRadius="2" Background="{x:Static app:PerfChart.RamBrush}" VerticalAlignment="Center"/><TextBlock Classes="muted" FontSize="13" Text="RAM"/></StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6"><Border Width="14" Height="3" CornerRadius="2" Background="{x:Static app:PerfChart.DiskBrush}" VerticalAlignment="Center"/><TextBlock Classes="muted" FontSize="13" Text="Disk"/></StackPanel>
+                </StackPanel>
+                <app:PerfChart x:Name="Chart"/>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</UserControl>

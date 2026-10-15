@@ -1,96 +1,174 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:core="using:PCDoctor.Core"
         xmlns:app="using:PCDoctor.App"
         x:Class="PCDoctor.App.MainWindow"
-        Title="PC Doctor" Width="1150" Height="760" MinWidth="760" MinHeight="480">
-    <DockPanel Margin="12">
+        Title="PC Doctor" Width="1200" Height="800" MinWidth="900" MinHeight="560">
+    <DockPanel>
 
-        <!-- Top bar: mode selector and settings -->
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,0,0,8">
-            <TextBlock Grid.Column="0" Text="PC Doctor" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,12,0">
-                <ComboBox x:Name="LanguageBox" ToolTip.Tip="Sproget PC Doctor svarer på" Margin="0,0,8,0"/>
-                <TextBlock Text="Tilstand:" VerticalAlignment="Center"/>
-                <ComboBox x:Name="ModeBox" Width="150" SelectedIndex="0">
-                    <ComboBoxItem Content="Read-only"/>
-                    <ComboBoxItem Content="Assisted"/>
-                    <ComboBoxItem Content="YOLO"/>
-                </ComboBox>
-            </StackPanel>
-            <Button Grid.Column="8" x:Name="StutterButton" Content="Hvorfor hakker mit spil?" Margin="8,0,0,0" ToolTip.Tip="Vælg spillet, spil lidt, og PC Doctor finder ud af, hvad der holder det tilbage"/>
-            <Button Grid.Column="3" x:Name="DiagnosticsButton" Content="Diagnostik" Margin="0,0,8,0" ToolTip.Tip="Tjek hardware, forbrug, netværk, hændelser og Minecraft uden AI"/>
-            <Button Grid.Column="4" x:Name="RecordButton" Content="Optag ydelse" Margin="0,0,8,0"/>
-            <Button Grid.Column="5" x:Name="HistoryButton" Content="Historik" Margin="0,0,8,0" ToolTip.Tip="Tidligere samtaler, og hvad der blev sendt til AI'en"/>
-            <Button Grid.Column="6" x:Name="NewChatButton" Content="Ny samtale" Margin="0,0,8,0"/>
-            <Button Grid.Column="7" x:Name="SettingsButton" Content="Indstillinger"/>
-        </Grid>
+        <!-- Sidebar: one button per page, and the mode and language at the bottom -->
+        <Border DockPanel.Dock="Left" Width="230" Background="{StaticResource SidebarBrush}" Padding="14,20">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="8,0,0,22">
+                    <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource AccentBrush}">
+                        <app:Icon Data="M3 12h4l2-5 4 10 2-5h6" Foreground="{StaticResource OnAccentBrush}" Width="22" Height="22"/>
+                    </Border>
+                    <TextBlock Text="PC Doctor" FontSize="18" FontWeight="ExtraBold" VerticalAlignment="Center"/>
+                </StackPanel>
 
-        <Border DockPanel.Dock="Top" x:Name="ModeBanner" CornerRadius="4" Padding="10,6" Margin="0,0,0,8">
-            <TextBlock x:Name="ModeText" TextWrapping="Wrap"/>
-        </Border>
-
-        <Border DockPanel.Dock="Top" x:Name="KeyBanner" Background="#33FFA500" CornerRadius="4" Padding="10,6" Margin="0,0,0,8" IsVisible="False">
-            <TextBlock TextWrapping="Wrap" Text="Der er ingen Anthropic API-nøgle endnu. Åbn Indstillinger og indsæt nøglen én gang; den gemmes i Windows Credential Manager."/>
-        </Border>
-
-        <!-- Input row -->
-        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
-            <TextBox Grid.Column="0" x:Name="InputBox" PlaceholderText="Beskriv problemet, fx 'Hvorfor crasher Minecraft?' (Enter for at sende)"
-                     AcceptsReturn="False" TextWrapping="Wrap" MaxHeight="120"/>
-            <Button Grid.Column="1" x:Name="SendButton" Content="Start" Margin="8,0,0,0" MinWidth="80"/>
-            <Button Grid.Column="2" x:Name="StopButton" Content="Stop" Margin="8,0,0,0" MinWidth="80" IsEnabled="False"/>
-        </Grid>
-
-        <TextBlock DockPanel.Dock="Bottom" x:Name="StatusText" Margin="0,6,0,0" Opacity="0.7"/>
-
-        <!-- Chat (left) and activity log (right) -->
-        <Grid ColumnDefinitions="3*,6,2*">
-            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
-                <ScrollViewer x:Name="ChatScroll">
-                    <ItemsControl x:Name="ChatList" Margin="8">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="app:ChatItem">
-                                <Border Background="{Binding Background}" CornerRadius="6" Padding="10,8" Margin="0,4">
-                                    <StackPanel Spacing="2">
-                                        <TextBlock Text="{Binding Who}" FontWeight="SemiBold" Opacity="0.8"/>
-                                        <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </Border>
-
-            <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns"/>
-
-            <DockPanel Grid.Column="2">
-                <TextBlock DockPanel.Dock="Top" Text="Aktivitet (klik for detaljer)" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                <Button DockPanel.Dock="Bottom" x:Name="ShowRequestButton" Content="Vis seneste API-forespørgsel" Margin="0,6,0,0" HorizontalAlignment="Stretch"/>
-                <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4">
-                    <ScrollViewer x:Name="ActivityScroll">
-                        <ItemsControl x:Name="ActivityList" Margin="4">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="app:ActivityItem">
-                                    <Expander HorizontalAlignment="Stretch" Margin="0,2" IsEnabled="{Binding HasDetail}">
-                                        <Expander.Header>
-                                            <TextBlock TextWrapping="Wrap">
-                                                <Run Text="{Binding TimeText}" Foreground="Gray"/>
-                                                <Run Text=" "/>
-                                                <Run Text="{Binding Icon}"/>
-                                                <Run Text=" "/>
-                                                <Run Text="{Binding Title}"/>
-                                            </TextBlock>
-                                        </Expander.Header>
-                                        <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
-                                    </Expander>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                <Border DockPanel.Dock="Bottom" Background="{StaticResource PageBrush}" CornerRadius="12" Padding="12">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="label" Text="TILSTAND"/>
+                        <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                            <ComboBoxItem>
+                                <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Classes="dot" Fill="{StaticResource GreenBrush}"/><TextBlock Text="Read-only"/></StackPanel>
+                            </ComboBoxItem>
+                            <ComboBoxItem>
+                                <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Classes="dot" Fill="{StaticResource AmberBrush}"/><TextBlock Text="Assisted"/></StackPanel>
+                            </ComboBoxItem>
+                            <ComboBoxItem>
+                                <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Classes="dot" Fill="{StaticResource RedBrush}"/><TextBlock Text="YOLO"/></StackPanel>
+                            </ComboBoxItem>
+                        </ComboBox>
+                        <ComboBox x:Name="LanguageBox" HorizontalAlignment="Stretch" ToolTip.Tip="Sproget PC Doctor svarer på"/>
+                    </StackPanel>
                 </Border>
+
+                <StackPanel Spacing="4">
+                    <Button x:Name="ChatNavButton" Classes="nav active">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>
+                            <TextBlock Text="Samtale"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="DiagnosticsButton" Classes="nav" ToolTip.Tip="Tjek hardware, forbrug, netværk, hændelser og spil uden AI">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M3 12h4l2-5 4 10 2-5h6"/>
+                            <TextBlock Text="Diagnostik"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="StutterButton" Classes="nav" ToolTip.Tip="Hvorfor hakker mit spil?">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M6 7h12a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4v-3a4 4 0 0 1 4-4z M7 11v3 M5.5 12.5h3 M15.5 12h.01 M18 14h.01"/>
+                            <TextBlock Text="Spillet hakker"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="RecordButton" Classes="nav" ToolTip.Tip="Optag CPU, grafikkort, RAM og disk, mens du bruger PC'en">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M3 3v18h18 M7 15l4-4 3 3 5-6"/>
+                            <TextBlock Text="Optag ydelse"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="HistoryButton" Classes="nav" ToolTip.Tip="Tidligere samtaler, og hvad der blev sendt til AI'en">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0z M12 7v5l3 2"/>
+                            <TextBlock Text="Historik"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="SettingsButton" Classes="nav">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M4 6h9 M17 6h3 M15 4v4 M4 12h3 M11 12h9 M9 10v4 M4 18h11 M19 18h1 M17 16v4"/>
+                            <TextBlock Text="Indstillinger"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </DockPanel>
-        </Grid>
+        </Border>
+
+        <!-- The pages. The chat is here; the other pages are added in code the first time they are opened. -->
+        <Panel x:Name="PageHost">
+            <DockPanel x:Name="ChatPage" Margin="24,20">
+
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+                    <TextBlock Classes="h1" Text="Samtale" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" x:Name="NewChatButton">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <app:Icon Data="M12 5v14 M5 12h14" Width="16" Height="16"/>
+                            <TextBlock Text="Ny samtale"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- Live gauges -->
+                <UniformGrid DockPanel.Dock="Top" x:Name="GaugeRow" Columns="4" ColumnSpacing="12" Margin="0,0,0,12">
+                    <app:GaugeTile x:Name="CpuTile" Label="CPU"/>
+                    <app:GaugeTile x:Name="GpuTile" Label="Grafikkort"/>
+                    <app:GaugeTile x:Name="RamTile" Label="RAM"/>
+                    <app:GaugeTile x:Name="DiskTile" Label="Disk"/>
+                </UniformGrid>
+
+                <Border DockPanel.Dock="Top" x:Name="ModeBanner" CornerRadius="12" Padding="14,10" Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Ellipse Classes="dot" x:Name="ModeDot"/>
+                        <TextBlock x:Name="ModeText" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Border DockPanel.Dock="Top" x:Name="KeyBanner" Background="{StaticResource AmberSoftBrush}" CornerRadius="12" Padding="14,10" Margin="0,0,0,12" IsVisible="False">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Ellipse Classes="dot" Fill="{StaticResource AmberBrush}"/>
+                        <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="Der mangler en API-nøgle. Åbn Indstillinger og indsæt den."/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Input -->
+                <TextBlock DockPanel.Dock="Bottom" x:Name="StatusText" Classes="muted" FontSize="12" Margin="4,8,0,0"/>
+                <Border DockPanel.Dock="Bottom" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                        CornerRadius="14" Padding="6" Margin="0,12,0,0">
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <TextBox Grid.Column="0" x:Name="InputBox" Classes="bare" PlaceholderText="Beskriv problemet …"
+                                 AcceptsReturn="False" TextWrapping="Wrap" MaxHeight="120" VerticalContentAlignment="Center"/>
+                        <Button Grid.Column="1" x:Name="SendButton" Classes="accent" Content="Start" MinWidth="90" Margin="6,0,0,0"/>
+                        <Button Grid.Column="2" x:Name="StopButton" Content="Stop" MinWidth="80" Margin="6,0,0,0" IsEnabled="False"/>
+                    </Grid>
+                </Border>
+
+                <!-- Chat (left) and what PC Doctor checked (right) -->
+                <Grid ColumnDefinitions="*,12,280">
+                    <Border Grid.Column="0" Classes="card" Padding="8">
+                        <ScrollViewer x:Name="ChatScroll">
+                            <ItemsControl x:Name="ChatList" Margin="8">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="app:ChatItem">
+                                        <Border Background="{Binding Background}" HorizontalAlignment="{Binding Align}" MaxWidth="680"
+                                                CornerRadius="14" Padding="14,10" Margin="0,6">
+                                            <StackPanel Spacing="4">
+                                                <TextBlock Text="{Binding Who}" Classes="label"/>
+                                                <app:MarkdownText Markdown="{Binding Text}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <Border Grid.Column="2" Classes="card" Padding="12">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Classes="label" Text="HVAD JEG TJEKKEDE" Margin="4,0,0,8"/>
+                            <Button DockPanel.Dock="Bottom" x:Name="ShowRequestButton" Classes="quiet" Content="Vis seneste API-forespørgsel"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" Margin="0,6,0,0"/>
+                            <ScrollViewer x:Name="ActivityScroll">
+                                <ItemsControl x:Name="ActivityList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="app:ActivityItem">
+                                            <Expander HorizontalAlignment="Stretch" Margin="0,2" IsEnabled="{Binding HasDetail}">
+                                                <Expander.Header>
+                                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                                        <Ellipse Classes="dot" Width="8" Height="8" Fill="{Binding Dot}" Margin="0,0,8,0"/>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Title}" TextWrapping="Wrap" FontSize="13"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding TimeText}" Classes="muted" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Expander.Header>
+                                                <SelectableTextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+                                            </Expander>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </DockPanel>
+        </Panel>
     </DockPanel>
 </Window>

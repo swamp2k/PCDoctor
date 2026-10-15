@@ -150,6 +150,8 @@ public partial class DiagnosticsPage
                 ? $"{game.Name} hakker eller kører langsomt, og loggen viser ingen fejl. Lav en grundig undersøgelse af ydelsen: " +
                   $"hardware og drivere, hvad der belaster PC'en, spillets krav, og min seneste optagelse hvis der er en.{seen}"
                 : $"{game.Name} hakker eller kører langsomt. Start med det, loggen viste, og undersøg derefter ydelsen.{seen}"),
+            ("Det lagger", $"{game.Name} lagger online (forsinkelse, folk hopper rundt). Undersøg internetforbindelsen: ping, pakketab, " +
+                $"wifi eller kabel, og om noget andet bruger nettet. Er det vores net eller spillets servere?{seen}"),
             ("Kan ikke komme online", $"{game.Name} kan ikke forbinde eller logge ind. Er spillet nede, eller er det vores internet?{seen}"),
         };
         var buttons = new WrapPanel();

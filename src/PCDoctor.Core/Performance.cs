@@ -15,6 +15,7 @@ namespace PCDoctor.Core;
 /// <param name="GameCpu">CPU used by the chosen game, % of the whole machine (game recordings only).</param>
 /// <param name="GameGpu">Graphics card used by the chosen game, % (game recordings only).</param>
 /// <param name="GameRamGb">RAM used by the chosen game, GB (game recordings only).</param>
+/// <param name="NetMbps">Network traffic in and out of this PC, megabits per second; null on the first reading or when Windows has no counter.</param>
 public sealed record PerfSample(
     double Seconds,
     double Cpu,
@@ -31,7 +32,8 @@ public sealed record PerfSample(
     bool PingLost = false,
     double? GameCpu = null,
     double? GameGpu = null,
-    double? GameRamGb = null);
+    double? GameRamGb = null,
+    double? NetMbps = null);
 
 /// <summary>Takes one measurement of the whole machine. The Windows version lives in Platform.Windows.</summary>
 public interface IPerfSampler

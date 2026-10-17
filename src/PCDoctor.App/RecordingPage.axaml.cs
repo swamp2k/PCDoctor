@@ -23,6 +23,8 @@ public partial class RecordingPage : UserControl
     Task? _recording;
     PerfRecording? _shown;
     bool _filling;
+    double? _lastPing;
+    bool _lastLost;
 
     public RecordingPage() : this(null, new PerfRecordingStore(), _ => false) { }
 
@@ -40,6 +42,18 @@ public partial class RecordingPage : UserControl
 
         ShowTitle();
         LiveLabels();
+        if (gameMode)
+        {
+            // The game page has a network monitor and a race view, which can be swapped for the normal graphs.
+            NetCard.IsVisible = ViewToggle.IsVisible = true;
+            NetGraph.Samples = _live;
+            ShowRace(true);
+            RaceButton.Click += (_, _) => ShowRace(true);
+            GraphsButton.Click += (_, _) => ShowRace(false);
+            ShowNetwork(null);
+        }
+        else
+            Race.IsVisible = false;
         if (gameMode)
             FpsBox.IsChecked = OperatingSystem.IsWindows();
         FpsBox.IsEnabled = OperatingSystem.IsWindows();
@@ -77,6 +91,37 @@ public partial class RecordingPage : UserControl
                 LiveLabels();
         };
     }
+
+    /// <summary>The race (or the normal graphs when <paramref name="race"/> is false); the button of the one shown is orange.</summary>
+    void ShowRace(bool race)
+    {
+        RaceCard.IsVisible = race;
+        ChartCard.IsVisible = !race;
+        RaceButton.Classes.Set("accent", race);
+        GraphsButton.Classes.Set("accent", !race);
+    }
+
+    /// <summary>The network monitor from a live sample, or from nothing (a dash). A ping that is still on its way keeps the last answer.</summary>
+    void ShowNetwork(PerfSample? s)
+    {
+        if (s is null)
+            (_lastPing, _lastLost) = (null, false);
+        else if (s.PingMs is not null || s.PingLost)
+            (_lastPing, _lastLost) = (s.PingMs, s.PingLost);
+        DrawNetwork(s?.NetMbps is { } mbps ? NetTraffic(mbps) : "");
+    }
+
+    void DrawNetwork(string detail)
+    {
+        var light = _lastLost ? Light.Red : _lastPing is null ? Light.None : _lastPing >= 150 ? Light.Red : _lastPing >= 60 ? Light.Amber : Light.Green;
+        NetDot.Fill = Status.Of(light);
+        NetPingText.Text = _lastLost ? L.T("Intet svar", "No answer", "Inget svar", "Ikke noe svar", "Keine Antwort") : _lastPing is { } p ? $"{p:0} ms" : "–";
+        NetDetail.Text = detail;
+    }
+
+    static string NetTraffic(double mbps) =>
+        L.T($"Trafik lige nu: {mbps:0.0} Mbit/s", $"Traffic right now: {mbps:0.0} Mbit/s", $"Trafik just nu: {mbps:0.0} Mbit/s",
+            $"Trafikk akkurat nå: {mbps:0.0} Mbit/s", $"Datenverkehr jetzt: {mbps:0.0} Mbit/s");
 
     void ShowOnlyOnWindows() =>
         ElapsedText.Text = L.T("Optagelse virker kun på Windows.", "Recording only works on Windows.", "Inspelning fungerar bara på Windows.",
@@ -159,6 +204,9 @@ public partial class RecordingPage : UserControl
         _live.Clear();
         _shown = null;
         Chart.Samples = _live;
+        NetGraph.Samples = _live;
+        ShowNetwork(null);
+        Race.Reset();
         SummaryText.Text = "";
         FpsCard.IsVisible = false;
         LiveLabels();
@@ -199,12 +247,18 @@ public partial class RecordingPage : UserControl
     {
         _live.Add(s);
         Chart.InvalidateVisual();
+        NetGraph.InvalidateVisual();
+        ShowNetwork(s);
+        Race.Update(s.Cpu, s.Gpu, s.Ram, s.Disk, RaceScore.NetworkLag(_lastPing, _lastLost), PingText());
         CpuTile.Show(s.Cpu);
         GpuTile.Show(s.Gpu);
         RamTile.Show(s.Ram);
         DiskTile.Show(s.Disk);
         ElapsedText.Text = $"{Recording} {Time(s.Seconds)} / {Max}";
     }
+
+    string? PingText() =>
+        _lastLost ? L.T("intet svar", "no answer", "inget svar", "ikke noe svar", "keine Antwort") : _lastPing is { } p ? $"{p:0} ms" : null;
 
     void OnFinished(PerfRecording r, string? saveError)
     {
@@ -257,6 +311,7 @@ public partial class RecordingPage : UserControl
     {
         _shown = r;
         Chart.Samples = r.Samples;
+        NetGraph.Samples = r.Samples;
         SummaryText.Text = Describe(r);
         AskButton.IsEnabled = _recording is null;
 
@@ -271,6 +326,20 @@ public partial class RecordingPage : UserControl
         GpuTile.Show(s.Gpu?.Average, Status.OfBusyTime(s.Gpu));
         RamTile.Show(s.Ram.Average, Status.OfBusyTime(s.Ram));
         DiskTile.Show(s.Disk?.Average, Status.OfBusyTime(s.Disk));
+
+        // The race shows the averages of the recording; the network monitor shows the ping average.
+        var ping = s.Ping;
+        Race.Update(s.Cpu.Average, s.Gpu?.Average, s.Ram.Average, s.Disk?.Average,
+            ping is null ? null : RaceScore.NetworkLag(ping.LostPercent >= 100 ? null : ping.AverageMs, ping.LostPercent >= 100),
+            ping is null ? null : ping.LostPercent >= 100 ? PingText() : $"{ping.AverageMs:0} ms");
+        if (_gameMode)
+        {
+            (_lastPing, _lastLost) = (ping is null || ping.LostPercent >= 100 ? null : ping.AverageMs, ping?.LostPercent >= 100);
+            var traffic = r.Samples.Where(x => x.NetMbps is not null).Select(x => x.NetMbps!.Value).ToList();
+            DrawNetwork(traffic.Count == 0 ? "" : L.T($"Gennemsnit: {traffic.Average():0.0} Mbit/s, højst {traffic.Max():0.0} Mbit/s",
+                $"Average: {traffic.Average():0.0} Mbit/s, at most {traffic.Max():0.0} Mbit/s", $"Genomsnitt: {traffic.Average():0.0} Mbit/s, som mest {traffic.Max():0.0} Mbit/s",
+                $"Gjennomsnitt: {traffic.Average():0.0} Mbit/s, maks {traffic.Max():0.0} Mbit/s", $"Durchschnitt: {traffic.Average():0.0} Mbit/s, höchstens {traffic.Max():0.0} Mbit/s"));
+        }
 
         FpsCard.IsVisible = r.Fps is not null;
         if (r.Fps is { Measured: true } f)

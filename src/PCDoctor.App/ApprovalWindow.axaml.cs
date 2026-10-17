@@ -3,7 +3,7 @@ using PCDoctor.Core;
 
 namespace PCDoctor.App;
 
-/// <summary>Shows the full command and folder; the command runs only on "Kør kommandoen".</summary>
+/// <summary>Shows the full command and folder; the command runs only on "Kør kommandoen" (Run the command).</summary>
 public partial class ApprovalWindow : Window
 {
     public ApprovalWindow() : this(new ShellRequest("", "", 0)) { }
@@ -12,7 +12,8 @@ public partial class ApprovalWindow : Window
     {
         InitializeComponent();
         CommandBox.Text = request.Command;
-        DirText.Text = $"Mappe: {request.WorkingDirectory}    Tidsgrænse: {request.TimeoutSeconds} sek.";
+        DirText.Text = $"{L.T("Mappe", "Folder", "Mapp", "Mappe", "Ordner")}: {request.WorkingDirectory}    " +
+                       $"{L.T("Tidsgrænse", "Time limit", "Tidsgräns", "Tidsgrense", "Zeitlimit")}: {request.TimeoutSeconds} {L.T("sek.", "sec.", "sek.", "sek.", "Sek.")}";
         ApproveButton.Click += (_, _) => Close(true);
         DenyButton.Click += (_, _) => Close(false);
         // Closing with the X button returns false, so the command does not run.

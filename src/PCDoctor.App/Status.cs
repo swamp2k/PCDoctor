@@ -122,10 +122,20 @@ public sealed class GaugeTile : Border
         Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _gauge, text } };
     }
 
+    public static readonly StyledProperty<string> LabelProperty = AvaloniaProperty.Register<GaugeTile, string>(nameof(Label), "");
+
+    /// <summary>The name under the number, e.g. "CPU". A property, so it can follow the language.</summary>
     public string Label
     {
-        get => _label.Text ?? "";
-        set => _label.Text = value;
+        get => GetValue(LabelProperty);
+        set => SetValue(LabelProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == LabelProperty)
+            _label.Text = Label;
     }
 
     /// <summary>Shows a percentage, coloured by how busy it is unless a light is given.</summary>

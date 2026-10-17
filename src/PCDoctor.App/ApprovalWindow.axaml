@@ -1,14 +1,15 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:PCDoctor.App"
         x:Class="PCDoctor.App.ApprovalWindow"
-        Title="Godkend kommando" Width="720" Height="460" WindowStartupLocation="CenterOwner" CanResize="True">
+        Title="{app:Tr Godkend kommando, Approve command, Godkänn kommando, Godkjenn kommando, Befehl bestätigen}" Width="720" Height="460" WindowStartupLocation="CenterOwner" CanResize="True">
     <DockPanel Margin="16">
         <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,0,0,8"
-                   Text="PC Doctor vil køre denne PowerShell-kommando som din Windows-bruger. Den kører kun, hvis du godkender."/>
+                   Text="{app:Tr 'PC Doctor vil køre denne PowerShell-kommando som din Windows-bruger. Den kører kun, hvis du godkender.', 'PC Doctor wants to run this PowerShell command as your Windows user. It only runs if you approve.', 'PC Doctor vill köra det här PowerShell-kommandot som din Windows-användare. Det körs bara om du godkänner.', 'PC Doctor vil kjøre denne PowerShell-kommandoen som Windows-brukeren din. Den kjører bare hvis du godkjenner.', 'PC Doctor möchte diesen PowerShell-Befehl als dein Windows-Benutzer ausführen. Er wird nur ausgeführt, wenn du zustimmst.'}"/>
         <TextBlock DockPanel.Dock="Top" x:Name="DirText" TextWrapping="Wrap" Margin="0,0,0,8" Opacity="0.8"/>
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
-            <Button x:Name="DenyButton" Content="Afvis" MinWidth="100" IsDefault="True"/>
-            <Button x:Name="ApproveButton" Content="Kør kommandoen" MinWidth="140"/>
+            <Button x:Name="DenyButton" Content="{app:Tr Afvis, Decline, Avvisa, Avvis, Ablehnen}" MinWidth="100" IsDefault="True"/>
+            <Button x:Name="ApproveButton" Content="{app:Tr Kør kommandoen, Run the command, Kör kommandot, Kjør kommandoen, Befehl ausführen}" MinWidth="140"/>
         </StackPanel>
         <TextBox x:Name="CommandBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
                  FontFamily="Consolas,Menlo,monospace"/>

@@ -56,7 +56,7 @@ public static class FpsCapture
     {
         string? exe = Environment.ProcessPath;
         if (exe is null || !exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-            return (null, "FPS kan kun måles fra PCDoctor.exe.");
+            return (null, L.T("FPS kan kun måles fra PCDoctor.exe.", "FPS can only be measured from PCDoctor.exe.", "FPS kan bara mätas från PCDoctor.exe.", "FPS kan bare måles fra PCDoctor.exe.", "FPS kann nur aus PCDoctor.exe gemessen werden."));
         Directory.CreateDirectory(folder);
         string id = Guid.NewGuid().ToString("N")[..8];
         string outFile = Path.Combine(folder, $"fps-{id}.json");
@@ -76,11 +76,15 @@ public static class FpsCapture
         }
         catch (Win32Exception e) when (e.NativeErrorCode == 1223) // ERROR_CANCELLED: the user clicked No
         {
-            return (null, "Du sagde nej til administrator-tilladelsen, så FPS måles ikke. Resten bliver stadig optaget.");
+            return (null, L.T("Du sagde nej til administrator-tilladelsen, så FPS måles ikke. Resten bliver stadig optaget.",
+                "You said no to administrator permission, so FPS is not measured. Everything else is still recorded.",
+                "Du sa nej till administratörsbehörigheten, så FPS mäts inte. Resten spelas fortfarande in.",
+                "Du sa nei til administratortillatelsen, så FPS måles ikke. Resten blir fortsatt tatt opp.",
+                "Du hast die Administratorberechtigung abgelehnt, daher wird FPS nicht gemessen. Alles andere wird weiter aufgezeichnet."));
         }
         catch (Exception e) when (e is Win32Exception or InvalidOperationException)
         {
-            return (null, "FPS-måleren kunne ikke starte: " + e.Message);
+            return (null, L.T("FPS-måleren kunne ikke starte: ", "The FPS meter could not start: ", "FPS-mätaren kunde inte starta: ", "FPS-måleren kunne ikke starte: ", "Die FPS-Messung konnte nicht starten: ") + e.Message);
         }
     }
 

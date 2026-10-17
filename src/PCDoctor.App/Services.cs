@@ -43,7 +43,7 @@ static class Services
     public static (Func<DateTimeOffset, Task<FpsResult>>? Stop, string? Problem) StartFps(string gameProcess)
     {
         if (!OperatingSystem.IsWindows())
-            return (null, "FPS kan kun måles på Windows.");
+            return (null, L.T("FPS kan kun måles på Windows.", "FPS can only be measured on Windows.", "FPS kan bara mätas på Windows.", "FPS kan bare måles på Windows.", "FPS kann nur unter Windows gemessen werden."));
         var (handle, problem) = FpsCapture.Start(gameProcess, AppPaths.SubDir("fps"));
         return handle is null ? (null, problem) : (handle.StopAsync, null);
     }

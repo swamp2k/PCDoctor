@@ -27,12 +27,12 @@ public partial class SettingsWindow : Window
         SaveKeyButton.Click += (_, _) =>
         {
             string key = KeyBox.Text?.Trim() ?? "";
-            if (key.Length == 0) { TestResult.Text = "Indsæt en nøgle først."; return; }
+            if (key.Length == 0) { TestResult.Text = L.T("Indsæt en nøgle først.", "Paste a key first.", "Klistra in en nyckel först.", "Lim inn en nøkkel først.", "Füge zuerst einen Schlüssel ein."); return; }
             try
             {
                 _secrets.Write(key);
                 KeyBox.Text = "";
-                TestResult.Text = "Nøglen er gemt.";
+                TestResult.Text = L.T("Nøglen er gemt.", "The key is saved.", "Nyckeln är sparad.", "Nøkkelen er lagret.", "Der Schlüssel ist gespeichert.");
             }
             catch (Exception ex) { TestResult.Text = ex.Message; }
             RefreshKeyStatus();
@@ -40,21 +40,21 @@ public partial class SettingsWindow : Window
         RemoveKeyButton.Click += (_, _) =>
         {
             _secrets.Delete();
-            TestResult.Text = "Nøglen er fjernet.";
+            TestResult.Text = L.T("Nøglen er fjernet.", "The key is removed.", "Nyckeln är borttagen.", "Nøkkelen er fjernet.", "Der Schlüssel wurde entfernt.");
             RefreshKeyStatus();
         };
         TestButton.Click += async (_, _) =>
         {
             string? key = _secrets.Read();
-            if (string.IsNullOrWhiteSpace(key)) { TestResult.Text = "Gem en nøgle først."; return; }
-            TestResult.Text = "Tester…";
+            if (string.IsNullOrWhiteSpace(key)) { TestResult.Text = L.T("Gem en nøgle først.", "Save a key first.", "Spara en nyckel först.", "Lagre en nøkkel først.", "Speichere zuerst einen Schlüssel."); return; }
+            TestResult.Text = L.T("Tester…", "Testing…", "Testar…", "Tester…", "Teste…");
             try
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
                 await AnthropicChatModel.TestConnectionAsync(key, cts.Token);
-                TestResult.Text = "Forbindelsen virker.";
+                TestResult.Text = L.T("Forbindelsen virker.", "The connection works.", "Anslutningen fungerar.", "Forbindelsen virker.", "Die Verbindung funktioniert.");
             }
-            catch (Exception ex) { TestResult.Text = $"Forbindelsen fejlede: {ex.Message}"; }
+            catch (Exception ex) { TestResult.Text = L.T("Forbindelsen fejlede: ", "The connection failed: ", "Anslutningen misslyckades: ", "Forbindelsen feilet: ", "Die Verbindung ist fehlgeschlagen: ") + ex.Message; }
         };
         SaveLimitsButton.Click += (_, _) =>
         {
@@ -65,12 +65,14 @@ public partial class SettingsWindow : Window
             try
             {
                 Services.SaveSettings(_settings);
-                LimitsResult.Text = "Gemt.";
+                LimitsResult.Text = L.T("Gemt.", "Saved.", "Sparat.", "Lagret.", "Gespeichert.");
             }
             catch (Exception ex) { LimitsResult.Text = ex.Message; }
         };
     }
 
     void RefreshKeyStatus() =>
-        KeyStatus.Text = string.IsNullOrWhiteSpace(_secrets.Read()) ? "Status: ingen nøgle gemt." : "Status: en nøgle er gemt.";
+        KeyStatus.Text = string.IsNullOrWhiteSpace(_secrets.Read())
+            ? L.T("Status: ingen nøgle gemt.", "Status: no key saved.", "Status: ingen nyckel sparad.", "Status: ingen nøkkel lagret.", "Status: kein Schlüssel gespeichert.")
+            : L.T("Status: en nøgle er gemt.", "Status: a key is saved.", "Status: en nyckel är sparad.", "Status: en nøkkel er lagret.", "Status: ein Schlüssel ist gespeichert.");
 }

@@ -42,7 +42,7 @@ public sealed class ToolInvoker
             switch (_mode())
             {
                 case PermissionMode.ReadOnly:
-                    report(new AgentEvent(AgentEventKind.ToolDenied, "Shell-kommando afvist (Read-only)", request.Command));
+                    report(new AgentEvent(AgentEventKind.ToolDenied, L.T("Shell-kommando afvist (Read-only)", "Shell command refused (Read-only)", "Shell-kommando avvisat (Read-only)", "Shell-kommando avvist (Read-only)", "Shell-Befehl abgelehnt (Read-only)"), request.Command));
                     return ToolResult.Error(
                         "Refused: PC Doctor is in Read-only mode, where free shell commands are not allowed. " +
                         "Use the built-in tools instead. If a shell command is truly needed, tell the user they can switch to Assisted or YOLO mode.");
@@ -52,10 +52,10 @@ public sealed class ToolInvoker
                     ct.ThrowIfCancellationRequested(); // Stop pressed while the dialog was open
                     if (!approved)
                     {
-                        report(new AgentEvent(AgentEventKind.ToolDenied, "Shell-kommando afvist af brugeren", request.Command));
+                        report(new AgentEvent(AgentEventKind.ToolDenied, L.T("Shell-kommando afvist af brugeren", "Shell command declined by the user", "Shell-kommando avvisat av användaren", "Shell-kommando avvist av brukeren", "Shell-Befehl vom Benutzer abgelehnt"), request.Command));
                         return ToolResult.Error("The user declined this command. It was not run. Do not ask to run the same command again.");
                     }
-                    report(new AgentEvent(AgentEventKind.Info, "Shell-kommando godkendt af brugeren", request.Command));
+                    report(new AgentEvent(AgentEventKind.Info, L.T("Shell-kommando godkendt af brugeren", "Shell command approved by the user", "Shell-kommando godkänt av användaren", "Shell-kommando godkjent av brukeren", "Shell-Befehl vom Benutzer bestätigt"), request.Command));
                     break;
 
                 case PermissionMode.Yolo:

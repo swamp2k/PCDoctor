@@ -100,7 +100,7 @@ public sealed class AnthropicChatModel : IChatModel
         catch (Exception ex)
         {
             Exchanged?.Invoke(new ApiExchange(started, request, null, Seconds(started),
-                ex is OperationCanceledException ? "Stoppet af brugeren" : $"{ex.GetType().Name}: {ex.Message}"));
+                ex is OperationCanceledException ? L.T("Stoppet af brugeren", "Stopped by the user", "Stoppad av användaren", "Stoppet av brukeren", "Vom Benutzer gestoppt") : $"{ex.GetType().Name}: {ex.Message}"));
             throw;
         }
         Exchanged?.Invoke(new ApiExchange(started, request, SafeSerialize(response), Seconds(started)));

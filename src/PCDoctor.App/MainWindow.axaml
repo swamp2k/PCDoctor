@@ -17,7 +17,7 @@
 
                 <Border DockPanel.Dock="Bottom" Background="{StaticResource PageBrush}" CornerRadius="12" Padding="12">
                     <StackPanel Spacing="8">
-                        <TextBlock Classes="label" Text="TILSTAND"/>
+                        <TextBlock Classes="label" Text="{app:Tr TILSTAND, MODE, LÄGE, MODUS, MODUS}"/>
                         <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" SelectedIndex="0">
                             <ComboBoxItem>
                                 <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Classes="dot" Fill="{StaticResource GreenBrush}"/><TextBlock Text="Read-only"/></StackPanel>
@@ -29,7 +29,7 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Classes="dot" Fill="{StaticResource RedBrush}"/><TextBlock Text="YOLO"/></StackPanel>
                             </ComboBoxItem>
                         </ComboBox>
-                        <ComboBox x:Name="LanguageBox" HorizontalAlignment="Stretch" ToolTip.Tip="Sproget PC Doctor svarer på"/>
+                        <ComboBox x:Name="LanguageBox" HorizontalAlignment="Stretch" ToolTip.Tip="{app:Tr Sprog, Language, Språk, Språk, Sprache}"/>
                     </StackPanel>
                 </Border>
 
@@ -37,37 +37,37 @@
                     <Button x:Name="ChatNavButton" Classes="nav active">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>
-                            <TextBlock Text="Samtale"/>
+                            <TextBlock Text="{app:Tr Samtale, Chat, Samtal, Samtale, Chat}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="DiagnosticsButton" Classes="nav" ToolTip.Tip="Tjek hardware, forbrug, netværk, hændelser og spil uden AI">
+                    <Button x:Name="DiagnosticsButton" Classes="nav" ToolTip.Tip="{app:Tr 'Tjek hardware, forbrug, netværk, hændelser og spil uden AI', 'Check hardware, usage, network, events and games without AI', 'Kontrollera hårdvara, belastning, nätverk, händelser och spel utan AI', 'Sjekk maskinvare, belastning, nettverk, hendelser og spill uten AI', 'Hardware, Auslastung, Netzwerk, Ereignisse und Spiele ohne KI prüfen'}">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M3 12h4l2-5 4 10 2-5h6"/>
-                            <TextBlock Text="Diagnostik"/>
+                            <TextBlock Text="{app:Tr Diagnostik, Diagnostics, Diagnostik, Diagnostikk, Diagnose}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="StutterButton" Classes="nav" ToolTip.Tip="Hvorfor hakker mit spil?">
+                    <Button x:Name="StutterButton" Classes="nav" ToolTip.Tip="{app:Tr Hvorfor hakker mit spil?, Why does my game stutter?, Varför hackar mitt spel?, Hvorfor hakker spillet mitt?, Warum ruckelt mein Spiel?}">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M6 7h12a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4v-3a4 4 0 0 1 4-4z M7 11v3 M5.5 12.5h3 M15.5 12h.01 M18 14h.01"/>
-                            <TextBlock Text="Spillet hakker"/>
+                            <TextBlock Text="{app:Tr Spillet hakker, Game stutters, Spelet hackar, Spillet hakker, Spiel ruckelt}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="RecordButton" Classes="nav" ToolTip.Tip="Optag CPU, grafikkort, RAM og disk, mens du bruger PC'en">
+                    <Button x:Name="RecordButton" Classes="nav" ToolTip.Tip="{app:Tr 'Optag CPU, grafikkort, RAM og disk, mens du bruger PC’en', 'Record CPU, graphics card, RAM and disk while you use the PC', 'Spela in CPU, grafikkort, RAM och disk medan du använder datorn', 'Ta opp CPU, skjermkort, RAM og disk mens du bruker PC-en', 'CPU, Grafikkarte, RAM und Festplatte aufzeichnen, während du den PC benutzt'}">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M3 3v18h18 M7 15l4-4 3 3 5-6"/>
-                            <TextBlock Text="Optag ydelse"/>
+                            <TextBlock Text="{app:Tr Optag ydelse, Record performance, Spela in prestanda, Ta opp ytelse, Leistung aufzeichnen}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="HistoryButton" Classes="nav" ToolTip.Tip="Tidligere samtaler, og hvad der blev sendt til AI'en">
+                    <Button x:Name="HistoryButton" Classes="nav" ToolTip.Tip="{app:Tr 'Tidligere samtaler, og hvad der blev sendt til AI’en', 'Earlier chats, and what was sent to the AI', 'Tidigare samtal och vad som skickades till AI:n', 'Tidligere samtaler, og hva som ble sendt til AI-en', 'Frühere Chats und was an die KI gesendet wurde'}">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0z M12 7v5l3 2"/>
-                            <TextBlock Text="Historik"/>
+                            <TextBlock Text="{app:Tr Historik, History, Historik, Historikk, Verlauf}"/>
                         </StackPanel>
                     </Button>
                     <Button x:Name="SettingsButton" Classes="nav">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M4 6h9 M17 6h3 M15 4v4 M4 12h3 M11 12h9 M9 10v4 M4 18h11 M19 18h1 M17 16v4"/>
-                            <TextBlock Text="Indstillinger"/>
+                            <TextBlock Text="{app:Tr Indstillinger, Settings, Inställningar, Innstillinger, Einstellungen}"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -79,11 +79,11 @@
             <DockPanel x:Name="ChatPage" Margin="24,20">
 
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
-                    <TextBlock Classes="h1" Text="Samtale" VerticalAlignment="Center"/>
+                    <TextBlock Classes="h1" Text="{app:Tr Samtale, Chat, Samtal, Samtale, Chat}" VerticalAlignment="Center"/>
                     <Button Grid.Column="1" x:Name="NewChatButton">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <app:Icon Data="M12 5v14 M5 12h14" Width="16" Height="16"/>
-                            <TextBlock Text="Ny samtale"/>
+                            <TextBlock Text="{app:Tr Ny samtale, New chat, Nytt samtal, Ny samtale, Neuer Chat}"/>
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -91,7 +91,7 @@
                 <!-- Live gauges -->
                 <UniformGrid DockPanel.Dock="Top" x:Name="GaugeRow" Columns="4" ColumnSpacing="12" Margin="0,0,0,12">
                     <app:GaugeTile x:Name="CpuTile" Label="CPU"/>
-                    <app:GaugeTile x:Name="GpuTile" Label="Grafikkort"/>
+                    <app:GaugeTile x:Name="GpuTile" Label="{app:Tr Grafikkort, Graphics card, Grafikkort, Skjermkort, Grafikkarte}"/>
                     <app:GaugeTile x:Name="RamTile" Label="RAM"/>
                     <app:GaugeTile x:Name="DiskTile" Label="Disk"/>
                 </UniformGrid>
@@ -106,7 +106,7 @@
                 <Border DockPanel.Dock="Top" x:Name="KeyBanner" Background="{StaticResource AmberSoftBrush}" CornerRadius="12" Padding="14,10" Margin="0,0,0,12" IsVisible="False">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Ellipse Classes="dot" Fill="{StaticResource AmberBrush}"/>
-                        <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="Der mangler en API-nøgle. Åbn Indstillinger og indsæt den."/>
+                        <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="{app:Tr 'Der mangler en API-nøgle. Åbn Indstillinger og indsæt den.', 'An API key is missing. Open Settings and paste it in.', 'En API-nyckel saknas. Öppna Inställningar och klistra in den.', 'Det mangler en API-nøkkel. Åpne Innstillinger og lim den inn.', 'Ein API-Schlüssel fehlt. Öffne die Einstellungen und füge ihn ein.'}"/>
                     </StackPanel>
                 </Border>
 
@@ -115,10 +115,10 @@
                 <Border DockPanel.Dock="Bottom" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
                         CornerRadius="14" Padding="6" Margin="0,12,0,0">
                     <Grid ColumnDefinitions="*,Auto,Auto">
-                        <TextBox Grid.Column="0" x:Name="InputBox" Classes="bare" PlaceholderText="Beskriv problemet …"
+                        <TextBox Grid.Column="0" x:Name="InputBox" Classes="bare" PlaceholderText="{app:Tr Beskriv problemet …, Describe the problem …, Beskriv problemet …, Beskriv problemet …, Beschreibe das Problem …}"
                                  AcceptsReturn="False" TextWrapping="Wrap" MaxHeight="120" VerticalContentAlignment="Center"/>
-                        <Button Grid.Column="1" x:Name="SendButton" Classes="accent" Content="Start" MinWidth="90" Margin="6,0,0,0"/>
-                        <Button Grid.Column="2" x:Name="StopButton" Content="Stop" MinWidth="80" Margin="6,0,0,0" IsEnabled="False"/>
+                        <Button Grid.Column="1" x:Name="SendButton" Classes="accent" Content="{app:Tr Start, Start, Starta, Start, Start}" MinWidth="90" Margin="6,0,0,0"/>
+                        <Button Grid.Column="2" x:Name="StopButton" Content="{app:Tr Stop, Stop, Stopp, Stopp, Stopp}" MinWidth="80" Margin="6,0,0,0" IsEnabled="False"/>
                     </Grid>
                 </Border>
 
@@ -144,8 +144,8 @@
 
                     <Border Grid.Column="2" Classes="card" Padding="12">
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Classes="label" Text="HVAD JEG TJEKKEDE" Margin="4,0,0,8"/>
-                            <Button DockPanel.Dock="Bottom" x:Name="ShowRequestButton" Classes="quiet" Content="Vis seneste API-forespørgsel"
+                            <TextBlock DockPanel.Dock="Top" Classes="label" Text="{app:Tr HVAD JEG TJEKKEDE, WHAT I CHECKED, VAD JAG KONTROLLERADE, HVA JEG SJEKKET, WAS ICH GEPRÜFT HABE}" Margin="4,0,0,8"/>
+                            <Button DockPanel.Dock="Bottom" x:Name="ShowRequestButton" Classes="quiet" Content="{app:Tr Vis seneste API-forespørgsel, Show latest API request, Visa senaste API-förfrågan, Vis siste API-forespørsel, Letzte API-Anfrage anzeigen}"
                                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="12" Margin="0,6,0,0"/>
                             <ScrollViewer x:Name="ActivityScroll">
                                 <ItemsControl x:Name="ActivityList">

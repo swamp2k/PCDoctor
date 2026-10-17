@@ -55,6 +55,8 @@ public partial class MainWindow : Window
             }
         }, RoutingStrategies.Tunnel);
         SettingsButton.Click += async (_, _) => await OpenSettingsAsync();
+        UpdateButton.Click += async (_, _) => await new UpdateWindow().ShowDialog(this);
+        Opened += async (_, _) => await CheckForUpdateAtStartupAsync();
         NewChatButton.Click += (_, _) => NewConversation();
         ChatNavButton.Click += (_, _) => ShowPage(ChatPage, ChatNavButton);
         RecordButton.Click += (_, _) => ShowPage(_recordingPage ??= NewRecordingPage(gameMode: false), RecordButton);
@@ -350,5 +352,15 @@ public partial class MainWindow : Window
     {
         await new SettingsWindow(_settings, _secrets).ShowDialog(this);
         RefreshKeyState();
+    }
+
+    /// <summary>Quietly looks for a newer version when the app starts; a window only appears if there is one.</summary>
+    async Task CheckForUpdateAtStartupAsync()
+    {
+        if (Environment.ProcessPath is not { } exe || !Path.GetFileName(exe).Equals("PCDoctor.exe", StringComparison.OrdinalIgnoreCase))
+            return; // running from a developer tool, not the real exe
+        Updater.CleanUp(exe);
+        var found = await new Updater().CheckAsync(Updater.CurrentVersion);
+        if (found is not null) await new UpdateWindow(found).ShowDialog(this);
     }
 }

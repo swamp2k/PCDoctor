@@ -9,7 +9,7 @@ namespace PCDoctor.App;
 /// <summary>Wires the platform-specific pieces together. The only place that knows about Windows.</summary>
 static class Services
 {
-    public static List<ITool> CreateTools(AgentSettings settings)
+    public static List<ITool> CreateTools(AgentSettings settings, LogReviewSelection logReview)
     {
         var tools = new List<ITool>();
         if (OperatingSystem.IsWindows())
@@ -27,6 +27,7 @@ static class Services
         tools.Add(new ServiceStatusTool());
         tools.Add(new GameRequirementsTool());
         tools.Add(new PerformanceRecordingTool(new PerfRecordingStore()));
+        tools.Add(new ReviewLogTool(logReview));
         if (OperatingSystem.IsWindows())
             tools.Add(new PowerShellTool(settings));
         return tools;

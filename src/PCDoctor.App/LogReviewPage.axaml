@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:PCDoctor.App"
+             x:Class="PCDoctor.App.LogReviewPage">
+    <ScrollViewer>
+        <StackPanel Margin="24,20" Spacing="14" MaxWidth="900" HorizontalAlignment="Left">
+            <StackPanel>
+                <TextBlock Classes="h1" Text="{app:Tr Log Review, Log Review, Log Review, Log Review, Log Review}"/>
+                <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,2,0,0"
+                           Text="{app:Tr 'Vælg en logfil. PC Doctor finder ud af, hvilket spil den er fra, og sender kun de linjer med fejl og advarsler til AI’en, ikke hele filen.', 'Pick a log file. PC Doctor works out which game it is from and sends only the lines with errors and warnings to the AI, not the whole file.', 'Välj en loggfil. PC Doctor tar reda på vilket spel den är från och skickar bara raderna med fel och varningar till AI:n, inte hela filen.', 'Velg en loggfil. PC Doctor finner ut hvilket spill den er fra og sender bare linjene med feil og advarsler til AI-en, ikke hele filen.', 'Wähle eine Logdatei. PC Doctor erkennt, von welchem Spiel sie stammt, und sendet nur die Zeilen mit Fehlern und Warnungen an die KI, nicht die ganze Datei.'}"/>
+            </StackPanel>
+
+            <Border x:Name="DropZone" Classes="card" Padding="20">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" x:Name="PickButton" Classes="accent" Content="{app:Tr Vælg logfil…, Choose log file…, Välj loggfil…, Velg loggfil…, Logdatei wählen…}" VerticalAlignment="Center"/>
+                    <StackPanel Spacing="2" VerticalAlignment="Center">
+                        <TextBlock x:Name="FileText" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="DropHint" Classes="muted" FontSize="13" TextWrapping="Wrap"
+                                   Text="{app:Tr 'Du kan også trække en logfil hertil.', 'You can also drag a log file here.', 'Du kan också dra en loggfil hit.', 'Du kan også dra en loggfil hit.', 'Du kannst eine Logdatei auch hierher ziehen.'}"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Border x:Name="ReviewCard" Classes="card" Padding="20" IsVisible="False">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Ellipse Classes="dot" x:Name="GameDot"/>
+                        <TextBlock x:Name="GameText" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <ComboBox x:Name="GameBox" Width="300"/>
+
+                    <TextBlock x:Name="SizeText" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="WarnText" TextWrapping="Wrap" FontSize="13"/>
+
+                    <Expander Header="{app:Tr Vis præcis hvad der sendes, Show exactly what is sent, Visa exakt vad som skickas, Vis nøyaktig hva som sendes, 'Genau anzeigen, was gesendet wird'}" HorizontalAlignment="Stretch">
+                        <ScrollViewer MaxHeight="260">
+                            <SelectableTextBlock x:Name="PreviewText" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
+                        </ScrollViewer>
+                    </Expander>
+
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="SmartButton" Classes="accent" IsEnabled="False"/>
+                        <Button x:Name="WholeButton" IsEnabled="False"/>
+                    </StackPanel>
+                    <TextBlock x:Name="StatusText" Classes="muted" FontSize="13" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

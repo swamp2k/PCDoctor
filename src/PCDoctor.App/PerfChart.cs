@@ -13,6 +13,7 @@ public sealed class PerfChart : Control
     public static readonly IBrush GpuBrush = Brush.Parse("#4F9DFF");
     public static readonly IBrush RamBrush = Brush.Parse("#A78BFA");
     public static readonly IBrush DiskBrush = Brush.Parse("#2DD4BF");
+    public static readonly IBrush NetBrush = Brush.Parse("#F472B6");
 
     static readonly IPen GridPen = new Pen(Brush.Parse("#263043"), 1);
     static readonly IBrush LabelBrush = Brush.Parse("#7A8499");

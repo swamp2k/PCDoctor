@@ -216,3 +216,15 @@ public class PerformanceAnalysisTests
         }
     }
 }
+
+public sealed class RaceScoreTests
+{
+    [Theory]
+    [InlineData(10.0, false, 0.0)]
+    [InlineData(110.0, false, 50.0)]
+    [InlineData(500.0, false, 100.0)]
+    [InlineData(null, true, 100.0)]
+    [InlineData(null, false, 0.0)]
+    public void Network_lag_score_runs_from_0_to_100(double? ping, bool lost, double expected) =>
+        Assert.Equal(expected, RaceScore.NetworkLag(ping, lost), 6);
+}

@@ -21,6 +21,8 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
     readonly PerformanceCounter? _cpuSpeed = TryCounter("Processor Information", "% Processor Performance", "_Total");
     readonly PerformanceCounterCategory? _gpu = TryCategory("GPU Engine");
     readonly PerformanceCounterCategory? _gpuMemory = TryCategory("GPU Adapter Memory");
+    readonly PerformanceCounterCategory? _net = TryCategory("Network Interface");
+    long _netBytes = -1, _netTicks;
     readonly Ping _ping = new();
     static readonly IPAddress PingTarget = IPAddress.Parse("1.1.1.1");
     Task<PingReply>? _pingTask;
@@ -43,7 +45,25 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
         var (gpu, topGpu, gameGpu) = Gpu();
         var (pingMs, pingLost) = PingResult();
         return new PerfSample(0, Math.Round(cpu, 1), gpu, ramPct, ramUsedGb, disk is null ? null : Math.Round(disk.Value, 1), topName, topCpu,
-            CpuSpeed(), GpuMemoryGb(), topGpu, pingMs, pingLost, gameCpu, gameGpu, gameRam);
+            CpuSpeed(), GpuMemoryGb(), topGpu, pingMs, pingLost, gameCpu, gameGpu, gameRam, NetworkMbps());
+    }
+
+    /// <summary>Traffic in and out over all network adapters since the last reading, in megabits per second.</summary>
+    double? NetworkMbps()
+    {
+        if (_net is null)
+            return null;
+        try
+        {
+            long bytes = (long)_net.ReadCategory()["Bytes Total/sec"].Values.Cast<InstanceData>().Sum(d => (double)d.RawValue);
+            long now = Stopwatch.GetTimestamp();
+            double? mbps = null;
+            if (_netBytes >= 0 && now > _netTicks && bytes >= _netBytes)
+                mbps = Math.Round((bytes - _netBytes) * 8 / 1e6 / Stopwatch.GetElapsedTime(_netTicks, now).TotalSeconds, 2);
+            (_netBytes, _netTicks) = (bytes, now);
+            return mbps;
+        }
+        catch (Exception) { return null; }
     }
 
     double? CpuSpeed()

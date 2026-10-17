@@ -8,6 +8,11 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
+    # Builds of the same branch run one at a time, in order, so an older build
+    # can never finish last and be marked as the newest release.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
     permissions:
       contents: write # needed to publish a GitHub Release
     steps:

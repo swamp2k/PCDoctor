@@ -8,12 +8,26 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
+    # Builds of the same branch run one at a time, in order, so an older build
+    # can never finish last and be marked as the newest release.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
+    permissions:
+      contents: write # needed to publish a GitHub Release
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history, so we can count commits for the version number
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      # Version = 1.0.<number of commits on this branch>. It goes up by one with every merge to main.
+      - name: Work out the version number
+        shell: bash
+        run: echo "VERSION=1.0.$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
 
       - name: Run tests (including the Windows-only ones)
         run: dotnet test PCDoctor.sln --configuration Release --logger "console;verbosity=normal"
@@ -23,6 +37,7 @@ jobs:
           dotnet publish src/PCDoctor.App/PCDoctor.App.csproj
           --configuration Release --runtime win-x64 --self-contained true
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=${{ env.VERSION }}
           --output publish
 
       - name: Upload PCDoctor.exe
@@ -30,3 +45,16 @@ jobs:
         with:
           name: PCDoctor-win-x64
           path: publish/PCDoctor.exe
+
+      # Only on main: put the new exe under the repository's "Releases" page.
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "v$VERSION" publish/PCDoctor.exe
+          --target "$GITHUB_SHA"
+          --title "PC Doctor $VERSION"
+          --generate-notes
+          --latest

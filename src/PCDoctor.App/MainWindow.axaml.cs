@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using PCDoctor.Agent;
 using PCDoctor.Core;
+using PCDoctor.Diagnostics;
 using PCDoctor.Storage;
 
 namespace PCDoctor.App;
@@ -17,6 +18,7 @@ public partial class MainWindow : Window
     readonly AgentSettings _settings = Services.LoadSettings();
     readonly ISecretStore _secrets = Services.CreateSecretStore();
     readonly List<ITool> _tools;
+    readonly LogReviewSelection _logSelection = new();
 
     PermissionMode _mode = PermissionMode.ReadOnly;
     IChatModel? _model;
@@ -27,6 +29,7 @@ public partial class MainWindow : Window
     DiagnosticsPage? _diagnosticsPage;
     RecordingPage? _stutterPage, _recordingPage;
     HistoryPage? _historyPage;
+    LogReviewPage? _logReviewPage;
     readonly IPerfSampler? _gaugeSampler = Services.CreatePerfSampler();
     readonly DispatcherTimer _gaugeTimer = new() { Interval = TimeSpan.FromSeconds(3) };
     bool _sampling;
@@ -35,7 +38,7 @@ public partial class MainWindow : Window
     {
         L.Current = _settings.Language;
         InitializeComponent();
-        _tools = Services.CreateTools(_settings);
+        _tools = Services.CreateTools(_settings, _logSelection);
         ChatList.ItemsSource = _chat;
         ActivityList.ItemsSource = _activity;
 
@@ -57,6 +60,7 @@ public partial class MainWindow : Window
         RecordButton.Click += (_, _) => ShowPage(_recordingPage ??= NewRecordingPage(gameMode: false), RecordButton);
         StutterButton.Click += (_, _) => ShowPage(_stutterPage ??= NewRecordingPage(gameMode: true), StutterButton);
         DiagnosticsButton.Click += (_, _) => ShowPage(_diagnosticsPage ??= new DiagnosticsPage(_tools, Ask), DiagnosticsButton);
+        LogReviewButton.Click += (_, _) => ShowPage(_logReviewPage ??= new LogReviewPage(_logSelection, Ask), LogReviewButton);
         HistoryButton.Click += (_, _) =>
         {
             ShowPage(_historyPage ??= new HistoryPage(_store), HistoryButton);
@@ -102,7 +106,7 @@ public partial class MainWindow : Window
             PageHost.Children.Add(page);
         foreach (var child in PageHost.Children)
             child.IsVisible = child == page;
-        foreach (var button in new[] { ChatNavButton, DiagnosticsButton, StutterButton, RecordButton, HistoryButton })
+        foreach (var button in new[] { ChatNavButton, DiagnosticsButton, StutterButton, RecordButton, LogReviewButton, HistoryButton })
             button.Classes.Set("active", button == nav);
     }
 

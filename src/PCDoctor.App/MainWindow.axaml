@@ -58,6 +58,12 @@
                             <TextBlock Text="{app:Tr Optag ydelse, Record performance, Spela in prestanda, Ta opp ytelse, Leistung aufzeichnen}"/>
                         </StackPanel>
                     </Button>
+                    <Button x:Name="LogReviewButton" Classes="nav" ToolTip.Tip="{app:Tr 'Få en logfil gennemgået uden at sende det hele til AI’en', 'Have a log file reviewed without sending all of it to the AI', 'Få en loggfil granskad utan att skicka allt till AI:n', 'Få en loggfil gjennomgått uten å sende alt til AI-en', 'Eine Logdatei prüfen lassen, ohne alles an die KI zu senden'}">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M9 13h6 M9 17h6"/>
+                            <TextBlock Text="{app:Tr Log Review, Log Review, Log Review, Log Review, Log Review}"/>
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="HistoryButton" Classes="nav" ToolTip.Tip="{app:Tr 'Tidligere samtaler, og hvad der blev sendt til AI’en', 'Earlier chats, and what was sent to the AI', 'Tidigare samtal och vad som skickades till AI:n', 'Tidligere samtaler, og hva som ble sendt til AI-en', 'Frühere Chats und was an die KI gesendet wurde'}">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0z M12 7v5l3 2"/>

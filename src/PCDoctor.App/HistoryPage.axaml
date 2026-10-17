@@ -4,16 +4,16 @@
              x:Class="PCDoctor.App.HistoryPage">
     <DockPanel Margin="24,20">
         <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="0,0,0,16">
-            <TextBlock Classes="h1" Text="Historik"/>
-            <TextBlock Classes="muted" FontSize="13" Text="Tidligere samtaler, gemt på denne PC."/>
+            <TextBlock Classes="h1" Text="{app:Tr Historik, History, Historik, Historikk, Verlauf}"/>
+            <TextBlock Classes="muted" FontSize="13" Text="{app:Tr 'Tidligere samtaler, gemt på denne PC.', 'Earlier chats, saved on this PC.', 'Tidigare samtal, sparade på den här datorn.', 'Tidligere samtaler, lagret på denne PC-en.', 'Frühere Chats, auf diesem PC gespeichert.'}"/>
         </StackPanel>
         <Grid ColumnDefinitions="300,12,*">
             <DockPanel Grid.Column="0">
                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                    <Button x:Name="RefreshButton" Content="Opdater"/>
-                    <Button x:Name="DeleteButton" Content="Slet samtalen" IsEnabled="False"/>
+                    <Button x:Name="RefreshButton" Content="{app:Tr Opdater, Refresh, Uppdatera, Oppdater, Aktualisieren}"/>
+                    <Button x:Name="DeleteButton" IsEnabled="False"/>
                 </StackPanel>
-                <TextBlock DockPanel.Dock="Top" x:Name="EmptyText" Classes="muted" Text="Ingen gemte samtaler endnu." IsVisible="False" Margin="0,0,0,6"/>
+                <TextBlock DockPanel.Dock="Top" x:Name="EmptyText" Classes="muted" IsVisible="False" Margin="0,0,0,6"/>
                 <ListBox x:Name="SessionList" Background="{StaticResource CardBrush}" CornerRadius="14" Padding="6">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="app:SessionListItem">
@@ -29,7 +29,7 @@
             <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns"/>
 
             <TabControl Grid.Column="2" x:Name="DetailTabs" IsVisible="False">
-                <TabItem Header="Samtale">
+                <TabItem Header="{app:Tr Samtale, Chat, Samtal, Samtale, Chat}">
                     <Border Classes="card" Padding="8">
                         <ScrollViewer>
                             <ItemsControl x:Name="ChatList" Margin="8">
@@ -48,7 +48,7 @@
                         </ScrollViewer>
                     </Border>
                 </TabItem>
-                <TabItem Header="Aktivitet">
+                <TabItem Header="{app:Tr Aktivitet, Activity, Aktivitet, Aktivitet, Aktivität}">
                     <Border Classes="card" Padding="8">
                         <ScrollViewer>
                             <ItemsControl x:Name="ActivityList" Margin="4">
@@ -70,18 +70,18 @@
                         </ScrollViewer>
                     </Border>
                 </TabItem>
-                <TabItem Header="API-forespørgsler">
+                <TabItem Header="{app:Tr API-forespørgsler, API requests, API-förfrågningar, API-forespørsler, API-Anfragen}">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,4,0,8" Classes="muted"
-                                   Text="Hvert kald til AI'en (Claude) i denne samtale: præcis hvad der blev sendt, og hvad der kom tilbage. API-nøgle og andre hemmeligheder er skjult. Til fejlfinding."/>
+                                   Text="{app:Tr 'Hvert kald til AI’en (Claude) i denne samtale: præcis hvad der blev sendt, og hvad der kom tilbage. API-nøgle og andre hemmeligheder er skjult. Til fejlfinding.', 'Every call to the AI (Claude) in this chat: exactly what was sent and what came back. The API key and other secrets are hidden. For troubleshooting.', 'Varje anrop till AI:n (Claude) i det här samtalet: exakt vad som skickades och vad som kom tillbaka. API-nyckel och andra hemligheter är dolda. För felsökning.', 'Hvert kall til AI-en (Claude) i denne samtalen: nøyaktig hva som ble sendt, og hva som kom tilbake. API-nøkkel og andre hemmeligheter er skjult. For feilsøking.', 'Jeder Aufruf an die KI (Claude) in diesem Chat: genau, was gesendet wurde und was zurückkam. API-Schlüssel und andere Geheimnisse sind verborgen. Zur Fehlersuche.'}"/>
                         <ScrollViewer>
                             <ItemsControl x:Name="ApiList">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="app:ApiCallItem">
                                         <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
                                             <TextBlock Grid.Column="0" Text="{Binding Text}" VerticalAlignment="Center" TextWrapping="Wrap" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
-                                            <Button Grid.Column="1" Content="Vis forespørgsel" Tag="request" Margin="8,0,0,0"/>
-                                            <Button Grid.Column="2" Content="Vis svar" Tag="response" Margin="8,0,0,0" IsEnabled="{Binding HasResponse}"/>
+                                            <Button Grid.Column="1" Content="{app:Tr Vis forespørgsel, Show request, Visa förfrågan, Vis forespørsel, Anfrage anzeigen}" Tag="request" Margin="8,0,0,0"/>
+                                            <Button Grid.Column="2" Content="{app:Tr Vis svar, Show response, Visa svar, Vis svar, Antwort anzeigen}" Tag="response" Margin="8,0,0,0" IsEnabled="{Binding HasResponse}"/>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -89,7 +89,7 @@
                         </ScrollViewer>
                     </DockPanel>
                 </TabItem>
-                <TabItem Header="Om samtalen">
+                <TabItem Header="{app:Tr Om samtalen, About this chat, Om samtalet, Om samtalen, Über diesen Chat}">
                     <ScrollViewer>
                         <SelectableTextBlock x:Name="InfoText" TextWrapping="Wrap" Margin="4" FontFamily="Consolas,Menlo,monospace" FontSize="12"/>
                     </ScrollViewer>

@@ -33,6 +33,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        L.Current = _settings.Language;
         InitializeComponent();
         _tools = Services.CreateTools(_settings);
         ChatList.ItemsSource = _chat;
@@ -62,12 +63,24 @@ public partial class MainWindow : Window
             _historyPage.Reload();
         };
         ShowRequestButton.Click += async (_, _) =>
-            await new TextWindow("Seneste API-forespørgsel (hemmeligheder skjult)",
-                _model?.LastRequestJson is { } json ? SecretMasker.Apply(json, _secrets.Read()) : "Ingen forespørgsel sendt endnu.").ShowDialog(this);
+            await new TextWindow(
+                L.T("Seneste API-forespørgsel (hemmeligheder skjult)", "Latest API request (secrets hidden)", "Senaste API-förfrågan (hemligheter dolda)",
+                    "Siste API-forespørsel (hemmeligheter skjult)", "Letzte API-Anfrage (Geheimnisse verborgen)"),
+                _model?.LastRequestJson is { } json ? SecretMasker.Apply(json, _secrets.Read())
+                    : L.T("Ingen forespørgsel sendt endnu.", "No request sent yet.", "Ingen förfrågan skickad än.", "Ingen forespørsel sendt ennå.", "Noch keine Anfrage gesendet.")).ShowDialog(this);
 
         SetMode(PermissionMode.ReadOnly, log: false);
         RefreshKeyState();
         StatusText.Text = ReadyText;
+        // The fixed labels follow the language by themselves; these texts are set from code, so they are set again.
+        L.Changed += () =>
+        {
+            SetMode(_mode, log: false);
+            StatusText.Text = _running is null ? ReadyText : BusyText;
+            for (int i = 0; i < _chat.Count; i++)
+                if (ChatItem.FromEvent(_chat[i].Event) is { } again)
+                    _chat[i] = again;
+        };
 
         GaugeRow.IsVisible = _gaugeSampler is not null;
         _gaugeTimer.Tick += async (_, _) => await UpdateGaugesAsync();
@@ -115,8 +128,13 @@ public partial class MainWindow : Window
     }
 
     string ReadyText => _store is null
-        ? "Klar. Historikken kunne ikke åbnes, så samtalen bliver ikke gemt."
-        : "Klar. Samtalen gemmes under Historik.";
+        ? L.T("Klar. Historikken kunne ikke åbnes, så samtalen bliver ikke gemt.", "Ready. The history could not be opened, so this chat will not be saved.",
+              "Klar. Historiken kunde inte öppnas, så samtalet sparas inte.", "Klar. Historikken kunne ikke åpnes, så samtalen blir ikke lagret.",
+              "Bereit. Der Verlauf konnte nicht geöffnet werden, daher wird dieser Chat nicht gespeichert.")
+        : L.T("Klar. Samtalen gemmes under Historik.", "Ready. The chat is saved under History.", "Klar. Samtalet sparas under Historik.",
+              "Klar. Samtalen lagres under Historikk.", "Bereit. Der Chat wird unter Verlauf gespeichert.");
+
+    static string BusyText => CommonText.Investigating;
 
     static string ModeName(PermissionMode mode) => mode switch
     {
@@ -130,14 +148,30 @@ public partial class MainWindow : Window
         _mode = mode;
         (ModeText.Text, Light light) = mode switch
         {
-            PermissionMode.ReadOnly => ("Read-only: PC Doctor kigger kun og ændrer intet.", Light.Green),
-            PermissionMode.Assisted => ("Assisted: PC Doctor må foreslå PowerShell-kommandoer. Du godkender hver eneste én.", Light.Amber),
-            _ => ("YOLO: PC Doctor kører PowerShell-kommandoer uden at spørge (ikke som administrator). Det er ikke risikofrit.", Light.Red),
+            PermissionMode.ReadOnly => (L.T(
+                "Read-only: PC Doctor kigger kun og ændrer intet.",
+                "Read-only: PC Doctor only looks and changes nothing.",
+                "Read-only: PC Doctor tittar bara och ändrar ingenting.",
+                "Read-only: PC Doctor ser bare og endrer ingenting.",
+                "Read-only: PC Doctor schaut nur und ändert nichts."), Light.Green),
+            PermissionMode.Assisted => (L.T(
+                "Assisted: PC Doctor må foreslå PowerShell-kommandoer. Du godkender hver eneste én.",
+                "Assisted: PC Doctor may suggest PowerShell commands. You approve every single one.",
+                "Assisted: PC Doctor får föreslå PowerShell-kommandon. Du godkänner vart och ett.",
+                "Assisted: PC Doctor kan foreslå PowerShell-kommandoer. Du godkjenner hver eneste en.",
+                "Assisted: PC Doctor darf PowerShell-Befehle vorschlagen. Du bestätigst jeden einzelnen."), Light.Amber),
+            _ => (L.T(
+                "YOLO: PC Doctor kører PowerShell-kommandoer uden at spørge (ikke som administrator). Det er ikke risikofrit.",
+                "YOLO: PC Doctor runs PowerShell commands without asking (not as administrator). This is not without risk.",
+                "YOLO: PC Doctor kör PowerShell-kommandon utan att fråga (inte som administratör). Det är inte riskfritt.",
+                "YOLO: PC Doctor kjører PowerShell-kommandoer uten å spørre (ikke som administrator). Det er ikke risikofritt.",
+                "YOLO: PC Doctor führt PowerShell-Befehle aus, ohne zu fragen (nicht als Administrator). Das ist nicht ohne Risiko."), Light.Red),
         };
         ModeBanner.Background = Status.SoftOf(light);
         ModeDot.Fill = Status.Of(light);
         if (log)
-            AddActivity(new AgentEvent(AgentEventKind.Info, $"Tilstand skiftet til {ModeName(mode)}"));
+            AddActivity(new AgentEvent(AgentEventKind.Info, L.T($"Tilstand skiftet til {ModeName(mode)}", $"Mode changed to {ModeName(mode)}",
+                $"Läge ändrat till {ModeName(mode)}", $"Modus endret til {ModeName(mode)}", $"Modus geändert zu {ModeName(mode)}")));
     }
 
     void SetupLanguagePicker()
@@ -155,8 +189,9 @@ public partial class MainWindow : Window
             if (LanguageBox.SelectedItem is not ComboBoxItem { Tag: AnswerLanguage language }) return;
             _settings.Language = language;
             _model?.SetLanguage(language);
+            L.Current = language; // the whole app switches
             try { Services.SaveSettings(_settings); } catch (IOException) { /* keep working with the in-memory choice */ }
-            AddActivity(new AgentEvent(AgentEventKind.Info, $"Svarsprog: {language.NativeName()}"));
+            AddActivity(new AgentEvent(AgentEventKind.Info, L.T("Sprog", "Language", "Språk", "Språk", "Sprache") + ": " + language.NativeName()));
         };
     }
 
@@ -220,7 +255,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            OnAgentEvent(new AgentEvent(AgentEventKind.Error, "Uventet fejl.", ex.ToString()));
+            OnAgentEvent(new AgentEvent(AgentEventKind.Error, L.T("Uventet fejl.", "Unexpected error.", "Oväntat fel.", "Uventet feil.", "Unerwarteter Fehler."), ex.ToString()));
         }
         finally
         {
@@ -275,7 +310,7 @@ public partial class MainWindow : Window
         StopButton.IsEnabled = running;
         NewChatButton.IsEnabled = !running;
         SettingsButton.IsEnabled = !running;
-        StatusText.Text = running ? "Undersøger…" : ReadyText;
+        StatusText.Text = running ? BusyText : ReadyText;
     }
 
     void AddActivity(AgentEvent e)

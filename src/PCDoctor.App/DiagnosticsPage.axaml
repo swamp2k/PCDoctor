@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:PCDoctor.App"
              x:Class="PCDoctor.App.DiagnosticsPage">
     <DockPanel Margin="24,20">
         <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="0,0,0,8">
-            <TextBlock Classes="h1" Text="Diagnostik"/>
-            <TextBlock Classes="muted" FontSize="13" Text="Uden AI. Intet på PC'en bliver ændret."/>
+            <TextBlock Classes="h1" Text="{app:Tr Diagnostik, Diagnostics, Diagnostik, Diagnostikk, Diagnose}"/>
+            <TextBlock Classes="muted" FontSize="13" Text="{app:Tr Uden AI. Intet på PC’en bliver ændret., Without AI. Nothing on the PC is changed., Utan AI. Inget på datorn ändras., Uten AI. Ingenting på PC-en blir endret., Ohne KI. Am PC wird nichts geändert.}"/>
         </StackPanel>
         <TabControl x:Name="Tabs" Padding="0,12,0,0"/>
     </DockPanel>

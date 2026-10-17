@@ -16,7 +16,8 @@ public partial class RecordingPage : UserControl
     readonly bool _gameMode;
 
     /// <summary>First entry of the game list: a normal recording that follows no particular game.</summary>
-    static readonly RunningProgram WholePc = new("", "Hele computeren (intet bestemt spil)", false);
+    static RunningProgram WholePc => new("", L.T("Hele computeren (intet bestemt spil)", "Whole computer (no specific game)",
+        "Hela datorn (inget särskilt spel)", "Hele PC-en (ikke noe bestemt spill)", "Ganzer PC (kein bestimmtes Spiel)"), false);
 
     CancellationTokenSource? _stop;
     Task? _recording;
@@ -37,12 +38,10 @@ public partial class RecordingPage : UserControl
         _ask = ask;
         _gameMode = gameMode;
 
+        ShowTitle();
+        LiveLabels();
         if (gameMode)
-        {
-            TitleText.Text = "Hvorfor hakker mit spil?";
-            IntroText.Text = "Start spillet og vælg det her. Tryk Start, og spil til det hakker. Kom tilbage og tryk Stop, så forklarer PC Doctor, hvad der holdt spillet tilbage.";
             FpsBox.IsChecked = OperatingSystem.IsWindows();
-        }
         FpsBox.IsEnabled = OperatingSystem.IsWindows();
         RefreshGames();
         RefreshGamesButton.Click += (_, _) => RefreshGames();
@@ -60,10 +59,51 @@ public partial class RecordingPage : UserControl
         if (_sampler is null)
         {
             StartButton.IsEnabled = false;
-            ElapsedText.Text = "Optagelse virker kun på Windows.";
+            ShowOnlyOnWindows();
         }
         FillList(select: null);
+
+        // A new language: the texts set from code are set again, and a recording shown is described again.
+        L.Changed += () =>
+        {
+            ShowTitle();
+            if (_sampler is null)
+                ShowOnlyOnWindows();
+            if (_recording is null)
+                RefreshGames();
+            if (_shown is not null && _recording is null)
+                Display(_shown);
+            else
+                LiveLabels();
+        };
     }
+
+    void ShowOnlyOnWindows() =>
+        ElapsedText.Text = L.T("Optagelse virker kun på Windows.", "Recording only works on Windows.", "Inspelning fungerar bara på Windows.",
+            "Opptak virker bare på Windows.", "Aufzeichnen funktioniert nur unter Windows.");
+
+    void ShowTitle()
+    {
+        TitleText.Text = _gameMode
+            ? L.T("Hvorfor hakker mit spil?", "Why does my game stutter?", "Varför hackar mitt spel?", "Hvorfor hakker spillet mitt?", "Warum ruckelt mein Spiel?")
+            : L.T("Optag ydelse", "Record performance", "Spela in prestanda", "Ta opp ytelse", "Leistung aufzeichnen");
+        IntroText.Text = _gameMode
+            ? L.T("Start spillet og vælg det her. Tryk Start, og spil til det hakker. Kom tilbage og tryk Stop, så forklarer PC Doctor, hvad der holdt spillet tilbage.",
+                  "Start the game and pick it here. Press Start and play until it stutters. Come back and press Stop, and PC Doctor will explain what held the game back.",
+                  "Starta spelet och välj det här. Tryck Starta och spela tills det hackar. Kom tillbaka och tryck Stopp, så förklarar PC Doctor vad som höll tillbaka spelet.",
+                  "Start spillet og velg det her. Trykk Start, og spill til det hakker. Kom tilbake og trykk Stopp, så forklarer PC Doctor hva som holdt spillet tilbake.",
+                  "Starte das Spiel und wähle es hier aus. Drücke Start und spiele, bis es ruckelt. Komm zurück und drücke Stopp, dann erklärt PC Doctor, was das Spiel ausgebremst hat.")
+            : L.T("Tryk Start, brug PC'en som normalt, og tryk Stop. Stopper selv efter 15 minutter.",
+                  "Press Start, use the PC as usual, and press Stop. Stops by itself after 15 minutes.",
+                  "Tryck Starta, använd datorn som vanligt och tryck Stopp. Stannar av sig själv efter 15 minuter.",
+                  "Trykk Start, bruk PC-en som vanlig, og trykk Stopp. Stopper av seg selv etter 15 minutter.",
+                  "Drücke Start, benutze den PC wie gewohnt und drücke Stopp. Stoppt nach 15 Minuten von selbst.");
+    }
+
+    static string GpuName => L.T("Grafikkort", "Graphics card", "Grafikkort", "Skjermkort", "Grafikkarte");
+
+    /// <summary>The gauge names while recording (live values).</summary>
+    void LiveLabels() => (CpuTile.Label, GpuTile.Label, RamTile.Label, DiskTile.Label) = ("CPU", GpuName, "RAM", "Disk");
 
     /// <summary>Called when the app closes. Closing mid-recording keeps what was recorded so far.</summary>
     public void Shutdown()
@@ -77,13 +117,14 @@ public partial class RecordingPage : UserControl
     void RefreshGames()
     {
         var previous = SelectedGame?.ProcessName;
+        bool wholePc = GameBox.SelectedItem is RunningProgram { ProcessName.Length: 0 };
         var list = new List<RunningProgram> { WholePc };
         try { list.AddRange(RunningGames.List()); } catch (Exception) { /* the list is a convenience; whole-PC recording still works */ }
         GameBox.ItemsSource = list;
         // Keep the choice; otherwise in game mode pick the first known game that is running.
         GameBox.SelectedItem = list.FirstOrDefault(g => g.ProcessName == previous && previous is not null)
-                               ?? (_gameMode ? list.FirstOrDefault(g => g.KnownGame) : null)
-                               ?? WholePc;
+                               ?? (_gameMode && !wholePc ? list.FirstOrDefault(g => g.KnownGame) : null)
+                               ?? list[0];
     }
 
     async Task StartAsync()
@@ -94,7 +135,11 @@ public partial class RecordingPage : UserControl
         var game = SelectedGame;
         if (_gameMode && game is null)
         {
-            ElapsedText.Text = "Vælg spillet først. Start det, og tryk på knappen ved siden af listen for at opdatere den.";
+            ElapsedText.Text = L.T("Vælg spillet først. Start det, og tryk på knappen ved siden af listen for at opdatere den.",
+                "Pick the game first. Start it, and press the button next to the list to refresh it.",
+                "Välj spelet först. Starta det och tryck på knappen bredvid listan för att uppdatera den.",
+                "Velg spillet først. Start det, og trykk på knappen ved siden av listen for å oppdatere den.",
+                "Wähle zuerst das Spiel. Starte es und drücke die Schaltfläche neben der Liste, um sie zu aktualisieren.");
             return;
         }
         _sampler.Game = game?.ProcessName;
@@ -105,7 +150,9 @@ public partial class RecordingPage : UserControl
         if (game is not null && FpsBox.IsChecked == true)
         {
             StartButton.IsEnabled = false;
-            ElapsedText.Text = "Venter på Windows' spørgsmål om administrator-tilladelse…";
+            ElapsedText.Text = L.T("Venter på Windows' spørgsmål om administrator-tilladelse…", "Waiting for Windows to ask for administrator permission…",
+                "Väntar på att Windows frågar om administratörsbehörighet…", "Venter på at Windows spør om administratortillatelse…",
+                "Warte darauf, dass Windows nach der Administratorberechtigung fragt…");
             (stopFps, fpsProblem) = await Task.Run(() => Services.StartFps(game.ProcessName));
         }
 
@@ -114,9 +161,9 @@ public partial class RecordingPage : UserControl
         Chart.Samples = _live;
         SummaryText.Text = "";
         FpsCard.IsVisible = false;
-        (CpuTile.Label, GpuTile.Label, RamTile.Label, DiskTile.Label) = ("CPU", "Grafikkort", "RAM", "Disk");
+        LiveLabels();
         SetRecording(true);
-        ElapsedText.Text = $"Optager… 0:00 / {Max}";
+        ElapsedText.Text = $"{Recording} 0:00 / {Max}";
 
         _stop = new CancellationTokenSource();
         var ct = _stop.Token;
@@ -131,7 +178,7 @@ public partial class RecordingPage : UserControl
                 r.GameProcess = game.ProcessName;
                 if (stopFps is not null)
                 {
-                    Dispatcher.UIThread.Post(() => ElapsedText.Text = "Beregner FPS…");
+                    Dispatcher.UIThread.Post(() => ElapsedText.Text = L.T("Beregner FPS…", "Calculating FPS…", "Beräknar FPS…", "Beregner FPS…", "Berechne FPS…"));
                     r.Fps = await stopFps(r.Started);
                 }
                 else if (fpsProblem is not null)
@@ -156,7 +203,7 @@ public partial class RecordingPage : UserControl
         GpuTile.Show(s.Gpu);
         RamTile.Show(s.Ram);
         DiskTile.Show(s.Disk);
-        ElapsedText.Text = $"Optager… {Time(s.Seconds)} / {Max}";
+        ElapsedText.Text = $"{Recording} {Time(s.Seconds)} / {Max}";
     }
 
     void OnFinished(PerfRecording r, string? saveError)
@@ -167,17 +214,20 @@ public partial class RecordingPage : UserControl
         SetRecording(false);
         if (r.Samples.Count == 0)
         {
-            ElapsedText.Text = "Intet optaget.";
+            ElapsedText.Text = L.T("Intet optaget.", "Nothing recorded.", "Inget inspelat.", "Ingenting tatt opp.", "Nichts aufgezeichnet.");
             return;
         }
         if (saveError is not null)
         {
             // Still show it, it just is not kept for later.
-            ElapsedText.Text = $"Kunne ikke gemme optagelsen: {saveError}";
+            ElapsedText.Text = L.T("Kunne ikke gemme optagelsen: ", "Could not save the recording: ", "Kunde inte spara inspelningen: ",
+                "Kunne ikke lagre opptaket: ", "Die Aufzeichnung konnte nicht gespeichert werden: ") + saveError;
             Display(r);
             return;
         }
-        ElapsedText.Text = r.StopReason == "limit" ? "Stoppet ved 15 minutter." : "Optagelse gemt.";
+        ElapsedText.Text = r.StopReason == "limit"
+            ? L.T("Stoppet ved 15 minutter.", "Stopped at 15 minutes.", "Stoppad vid 15 minuter.", "Stoppet ved 15 minutter.", "Bei 15 Minuten gestoppt.")
+            : L.T("Optagelse gemt.", "Recording saved.", "Inspelningen sparad.", "Opptaket er lagret.", "Aufzeichnung gespeichert.");
         FillList(select: r.Id);
         Display(r);
         if (_gameMode && r.Game is not null)
@@ -212,10 +262,11 @@ public partial class RecordingPage : UserControl
 
         // Averages, coloured by how much of the time each part was close to 100 %.
         var s = PerfSummary.From(r);
-        CpuTile.Label = "CPU snit";
-        GpuTile.Label = "Grafikkort snit";
-        RamTile.Label = "RAM snit";
-        DiskTile.Label = "Disk snit";
+        string avg = L.T("snit", "average", "snitt", "snitt", "Schnitt");
+        CpuTile.Label = $"CPU {avg}";
+        GpuTile.Label = $"{GpuName} {avg}";
+        RamTile.Label = $"RAM {avg}";
+        DiskTile.Label = $"Disk {avg}";
         CpuTile.Show(s.Cpu.Average, Status.OfBusyTime(s.Cpu));
         GpuTile.Show(s.Gpu?.Average, Status.OfBusyTime(s.Gpu));
         RamTile.Show(s.Ram.Average, Status.OfBusyTime(s.Ram));
@@ -224,14 +275,16 @@ public partial class RecordingPage : UserControl
         FpsCard.IsVisible = r.Fps is not null;
         if (r.Fps is { Measured: true } f)
         {
-            FpsText.Text = $"{f.AverageFps:0} snit";
-            FpsDetail.Text = $"{f.OnePercentLowFps:0} i 1 % low · {f.Stutters} hak";
+            FpsText.Text = $"{f.AverageFps:0} {avg}";
+            string low = $"{f.OnePercentLowFps:0}";
+            FpsDetail.Text = L.T($"{low} i 1 % low · {f.Stutters} hak", $"{low} in 1 % low · {f.Stutters} stutters", $"{low} i 1 % low · {f.Stutters} hack",
+                $"{low} i 1 % low · {f.Stutters} hakk", $"{low} bei 1 % low · {f.Stutters} Ruckler");
             FpsDot.Fill = Status.Of(Status.OfFps(f.AverageFps));
         }
         else if (r.Fps is { } nf)
         {
             FpsText.Text = "–";
-            FpsDetail.Text = "Ikke målt";
+            FpsDetail.Text = L.T("Ikke målt", "Not measured", "Inte mätt", "Ikke målt", "Nicht gemessen");
             ToolTip.SetTip(FpsCard, nf.Problem);
             FpsDot.Fill = Status.Of(Light.None);
         }
@@ -241,62 +294,129 @@ public partial class RecordingPage : UserControl
     {
         if (_shown is null)
             return;
+        string id = _shown.Id, when = $"{_shown.Started.LocalDateTime:dd-MM-yyyy HH:mm}", length = Time(_shown.DurationSeconds);
         string q = _shown.Game is { } g
-            ? $"Hvorfor hakker {g}? Kig på min optagelse {_shown.Id} fra {_shown.Started.LocalDateTime:dd-MM-yyyy HH:mm} " +
-              $"({Time(_shown.DurationSeconds)}), mens jeg spillede. Hvad holdt spillet tilbage, og hvad kan jeg gøre ved det?"
-            : $"Kig på min ydelsesoptagelse {_shown.Id} fra {_shown.Started.LocalDateTime:dd-MM-yyyy HH:mm} " +
-              $"({Time(_shown.DurationSeconds)}). Hvad begrænsede ydelsen, og hvad kan jeg gøre ved det?";
-        if (_ask(q))
-            ElapsedText.Text = "Spørgsmålet er sendt til PC Doctor.";
-        else
-            ElapsedText.Text = "PC Doctor er optaget. Vent til den er færdig, og prøv igen.";
+            ? L.T($"Hvorfor hakker {g}? Kig på min optagelse {id} fra {when} ({length}), mens jeg spillede. Hvad holdt spillet tilbage, og hvad kan jeg gøre ved det?",
+                  $"Why does {g} stutter? Look at my recording {id} from {when} ({length}) while I was playing. What held the game back, and what can I do about it?",
+                  $"Varför hackar {g}? Titta på min inspelning {id} från {when} ({length}) medan jag spelade. Vad höll tillbaka spelet, och vad kan jag göra åt det?",
+                  $"Hvorfor hakker {g}? Se på opptaket mitt {id} fra {when} ({length}) mens jeg spilte. Hva holdt spillet tilbake, og hva kan jeg gjøre med det?",
+                  $"Warum ruckelt {g}? Sieh dir meine Aufzeichnung {id} vom {when} ({length}) an, während ich gespielt habe. Was hat das Spiel ausgebremst, und was kann ich dagegen tun?")
+            : L.T($"Kig på min ydelsesoptagelse {id} fra {when} ({length}). Hvad begrænsede ydelsen, og hvad kan jeg gøre ved det?",
+                  $"Look at my performance recording {id} from {when} ({length}). What limited the performance, and what can I do about it?",
+                  $"Titta på min prestandainspelning {id} från {when} ({length}). Vad begränsade prestandan, och vad kan jag göra åt det?",
+                  $"Se på ytelsesopptaket mitt {id} fra {when} ({length}). Hva begrenset ytelsen, og hva kan jeg gjøre med det?",
+                  $"Sieh dir meine Leistungsaufzeichnung {id} vom {when} ({length}) an. Was hat die Leistung begrenzt, und was kann ich dagegen tun?");
+        ElapsedText.Text = _ask(q) ? CommonText.QuestionSent : CommonText.Busy;
     }
 
-    /// <summary>Plain-language summary shown under the chart.</summary>
+    /// <summary>Plain-language summary shown under the chart, in the language picked.</summary>
     public static string Describe(PerfRecording r)
     {
         var s = PerfSummary.From(r);
         var b = new StringBuilder();
+        string avg = L.T("gennemsnit", "average", "genomsnitt", "gjennomsnitt", "Durchschnitt");
+        string top = L.T("top", "peak", "topp", "topp", "Spitze");
+        string atMost = L.T("højst", "at most", "som mest", "maks", "höchstens");
         if (r.Game is not null)
         {
-            b.AppendLine($"Spil: {r.Game}");
+            b.AppendLine($"{L.T("Spil", "Game", "Spel", "Spill", "Spiel")}: {r.Game}");
             if (r.Fps is { Measured: true } f)
-                b.AppendLine($"FPS: gennemsnit {f.AverageFps:0}, bedste sekund {f.MaxFps:0}, værste sekund {f.MinFps:0}, " +
-                             $"1 % low {f.OnePercentLowFps:0}, 0,1 % low {f.PointOnePercentLowFps:0}, {f.Stutters} hak (billeder over {Math.Max(2.5 * f.MedianFrameMs, 40):0} ms)");
+            {
+                string a = $"{f.AverageFps:0}", best = $"{f.MaxFps:0}", worst = $"{f.MinFps:0}", low1 = $"{f.OnePercentLowFps:0}";
+                string low01 = f.PointOnePercentLowFps.ToString("0", L.Culture), ms = $"{Math.Max(2.5 * f.MedianFrameMs, 40):0}";
+                b.AppendLine(L.T(
+                    $"FPS: gennemsnit {a}, bedste sekund {best}, værste sekund {worst}, 1 % low {low1}, 0,1 % low {low01}, {f.Stutters} hak (billeder over {ms} ms)",
+                    $"FPS: average {a}, best second {best}, worst second {worst}, 1 % low {low1}, 0.1 % low {low01}, {f.Stutters} stutters (frames over {ms} ms)",
+                    $"FPS: genomsnitt {a}, bästa sekund {best}, sämsta sekund {worst}, 1 % low {low1}, 0,1 % low {low01}, {f.Stutters} hack (bilder över {ms} ms)",
+                    $"FPS: gjennomsnitt {a}, beste sekund {best}, verste sekund {worst}, 1 % low {low1}, 0,1 % low {low01}, {f.Stutters} hakk (bilder over {ms} ms)",
+                    $"FPS: Durchschnitt {a}, bester Sekundenwert {best}, schlechtester Sekundenwert {worst}, 1 % low {low1}, 0,1 % low {low01}, {f.Stutters} Ruckler (Bilder über {ms} ms)"));
+            }
             else if (r.Fps is { } nf)
-                b.AppendLine($"FPS: ikke målt. {nf.Problem}");
+                b.AppendLine(L.T("FPS: ikke målt.", "FPS: not measured.", "FPS: inte mätt.", "FPS: ikke målt.", "FPS: nicht gemessen.") + $" {nf.Problem}");
             if (s.GameCpu is { } gc)
-                b.AppendLine($"Spillets eget forbrug: CPU gennemsnit {gc.Average:0} %, top {gc.Max:0} %" +
-                             (s.GameGpu is { } gg ? $"; grafikkort gennemsnit {gg.Average:0} %, top {gg.Max:0} %" : "") +
-                             (s.MaxGameRamGb is { } gr ? $"; RAM højst {gr:0.0} GB" : ""));
+                b.AppendLine(L.T("Spillets eget forbrug", "The game's own usage", "Spelets egen belastning", "Spillets eget forbruk", "Verbrauch des Spiels selbst") +
+                             $": CPU {avg} {gc.Average:0} %, {top} {gc.Max:0} %" +
+                             (s.GameGpu is { } gg ? $"; {GpuName.ToLower(L.Culture)} {avg} {gg.Average:0} %, {top} {gg.Max:0} %" : "") +
+                             (s.MaxGameRamGb is { } gr ? $"; RAM {atMost} {gr:0.0} GB" : ""));
             else
-                b.AppendLine("Spillet kørte ikke under optagelsen.");
+                b.AppendLine(L.T("Spillet kørte ikke under optagelsen.", "The game was not running during the recording.", "Spelet körde inte under inspelningen.",
+                    "Spillet kjørte ikke under opptaket.", "Das Spiel lief während der Aufzeichnung nicht."));
         }
-        b.AppendLine($"Varighed {Time(s.DurationSeconds)} ({s.SampleCount} målinger), stoppet {(r.StopReason == "limit" ? "ved 15-minutters grænsen" : "af dig")}.");
+        bool limit = r.StopReason == "limit";
+        string length = Time(s.DurationSeconds);
+        int n = s.SampleCount;
+        b.AppendLine(L.T(
+            $"Varighed {length} ({n} målinger), stoppet {(limit ? "ved 15-minutters grænsen" : "af dig")}.",
+            $"Duration {length} ({n} samples), stopped {(limit ? "at the 15-minute limit" : "by you")}.",
+            $"Längd {length} ({n} mätningar), stoppad {(limit ? "vid 15-minutersgränsen" : "av dig")}.",
+            $"Varighet {length} ({n} målinger), stoppet {(limit ? "ved 15-minuttersgrensen" : "av deg")}.",
+            $"Dauer {length} ({n} Messungen), gestoppt {(limit ? "beim 15-Minuten-Limit" : "von dir")}."));
         b.AppendLine(Line("CPU ", s.Cpu));
         b.AppendLine(Line("GPU ", s.Gpu));
-        b.AppendLine(Line("RAM ", s.Ram) + $" (højst {s.MaxRamUsedGb:0.0} GB i brug)");
+        string ramUsed = $"{s.MaxRamUsedGb:0.0}";
+        b.AppendLine(Line("RAM ", s.Ram) + L.T($" (højst {ramUsed} GB i brug)", $" (at most {ramUsed} GB in use)", $" (som mest {ramUsed} GB använt)",
+            $" (maks {ramUsed} GB i bruk)", $" (höchstens {ramUsed} GB belegt)"));
         b.AppendLine(Line("Disk", s.Disk));
         if (s.CpuSpeed is { } speed)
-            b.AppendLine($"CPU-hastighed: gennemsnit {speed.Average:0} % af normal, laveste {speed.Min:0} %" +
-                         (speed.SlowedPercentOfBusyTime >= 20 ? $" (sat ned i {speed.SlowedPercentOfBusyTime:0} % af tiden den havde travlt: varme eller strømsparing?)" : ""));
+        {
+            string a = $"{speed.Average:0}", low = $"{speed.Min:0}", slowed = $"{speed.SlowedPercentOfBusyTime:0}";
+            b.AppendLine(L.T($"CPU-hastighed: gennemsnit {a} % af normal, laveste {low} %", $"CPU speed: average {a} % of normal, lowest {low} %",
+                             $"CPU-hastighet: genomsnitt {a} % av normal, lägsta {low} %", $"CPU-hastighet: gjennomsnitt {a} % av normal, laveste {low} %",
+                             $"CPU-Takt: Durchschnitt {a} % des Normalwerts, niedrigster {low} %") +
+                         (speed.SlowedPercentOfBusyTime >= 20
+                             ? L.T($" (sat ned i {slowed} % af tiden den havde travlt: varme eller strømsparing?)",
+                                   $" (slowed down for {slowed} % of the busy time: heat or power saving?)",
+                                   $" (nedsatt under {slowed} % av tiden den var upptagen: värme eller energisparläge?)",
+                                   $" (satt ned i {slowed} % av tiden den hadde mye å gjøre: varme eller strømsparing?)",
+                                   $" (gedrosselt während {slowed} % der ausgelasteten Zeit: Hitze oder Energiesparen?)")
+                             : ""));
+        }
         if (s.MaxGpuMemoryGb is { } vram)
-            b.AppendLine($"Grafikhukommelse (VRAM): højst {vram:0.0} GB i brug");
+            b.AppendLine(L.T("Grafikhukommelse (VRAM)", "Graphics memory (VRAM)", "Grafikminne (VRAM)", "Grafikkminne (VRAM)", "Grafikspeicher (VRAM)") +
+                         $": {atMost} {vram:0.0} GB " + L.T("i brug", "in use", "använt", "i bruk", "belegt"));
         if (s.Ping is { } ping)
+        {
+            string a = $"{ping.AverageMs:0}", max = $"{ping.MaxMs:0}", lost = $"{ping.LostPercent:0.#}";
             b.AppendLine(ping.LostPercent >= 100
-                ? "Internet-ping: intet svar (netværket blokerer måske ping)"
-                : $"Internet-ping: gennemsnit {ping.AverageMs:0} ms, højst {ping.MaxMs:0} ms, {ping.Spikes} lag-spidser over 150 ms, {ping.LostPercent:0.#} % tabt");
+                ? L.T("Internet-ping: intet svar (netværket blokerer måske ping)", "Internet ping: no answer (the network may block ping)",
+                      "Internet-ping: inget svar (nätverket blockerar kanske ping)", "Internett-ping: ikke noe svar (nettverket blokkerer kanskje ping)",
+                      "Internet-Ping: keine Antwort (das Netzwerk blockiert Ping vielleicht)")
+                : L.T($"Internet-ping: gennemsnit {a} ms, højst {max} ms, {ping.Spikes} lag-spidser over 150 ms, {lost} % tabt",
+                      $"Internet ping: average {a} ms, at most {max} ms, {ping.Spikes} lag spikes over 150 ms, {lost} % lost",
+                      $"Internet-ping: genomsnitt {a} ms, som mest {max} ms, {ping.Spikes} laggtoppar över 150 ms, {lost} % förlorat",
+                      $"Internett-ping: gjennomsnitt {a} ms, maks {max} ms, {ping.Spikes} lag-topper over 150 ms, {lost} % tapt",
+                      $"Internet-Ping: Durchschnitt {a} ms, höchstens {max} ms, {ping.Spikes} Lag-Spitzen über 150 ms, {lost} % verloren"));
+        }
         if (s.TopProcesses.Count > 0)
-            b.AppendLine("Brugte mest CPU: " + string.Join(", ", s.TopProcesses.Select(p => $"{p.Name} ({p.PercentOfTime:0} % af tiden)")));
+            b.AppendLine(L.T("Brugte mest CPU: ", "Used the most CPU: ", "Använde mest CPU: ", "Brukte mest CPU: ", "Meiste CPU: ") +
+                         string.Join(", ", s.TopProcesses.Select(p => $"{p.Name} ({OfTheTime(p.PercentOfTime)})")));
         if (s.TopGpuProcesses is { Count: > 0 } gpu)
-            b.AppendLine("Brugte mest grafikkort: " + string.Join(", ", gpu.Select(p => $"{p.Name} ({p.PercentOfTime:0} % af tiden)")));
+            b.AppendLine(L.T("Brugte mest grafikkort: ", "Used the graphics card the most: ", "Använde grafikkortet mest: ", "Brukte skjermkortet mest: ",
+                             "Meiste Grafikkarte: ") +
+                         string.Join(", ", gpu.Select(p => $"{p.Name} ({OfTheTime(p.PercentOfTime)})")));
         return b.ToString().TrimEnd();
     }
 
-    static string Line(string name, MetricSummary? m) =>
-        m is null
-            ? $"{name}: ikke tilgængelig på denne PC"
-            : $"{name}: gennemsnit {m.Average,5:0} %, top {m.Max,5:0} %, over 90 % i {m.PercentOfTimeAbove90:0} % af tiden";
+    static string OfTheTime(double percent)
+    {
+        string p = $"{percent:0}";
+        return L.T($"{p} % af tiden", $"{p} % of the time", $"{p} % av tiden", $"{p} % av tiden", $"{p} % der Zeit");
+    }
+
+    static string Line(string name, MetricSummary? m)
+    {
+        if (m is null)
+            return $"{name}: " + L.T("ikke tilgængelig på denne PC", "not available on this PC", "inte tillgänglig på den här datorn",
+                "ikke tilgjengelig på denne PC-en", "auf diesem PC nicht verfügbar");
+        string a = $"{m.Average,5:0}", top = $"{m.Max,5:0}", above = $"{m.PercentOfTimeAbove90:0}";
+        return $"{name}: " + L.T($"gennemsnit {a} %, top {top} %, over 90 % i {above} % af tiden",
+            $"average {a} %, peak {top} %, over 90 % for {above} % of the time",
+            $"genomsnitt {a} %, topp {top} %, över 90 % under {above} % av tiden",
+            $"gjennomsnitt {a} %, topp {top} %, over 90 % i {above} % av tiden",
+            $"Durchschnitt {a} %, Spitze {top} %, über 90 % während {above} % der Zeit");
+    }
+
+    static string Recording => L.T("Optager…", "Recording…", "Spelar in…", "Tar opp…", "Zeichne auf…");
 
     static string Max => Time(PerfRecorder.MaxDuration.TotalSeconds);
 

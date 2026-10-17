@@ -20,6 +20,12 @@ public partial class DiagnosticsPage : UserControl
     readonly Func<string, bool> _ask;
     readonly CancellationTokenSource _closing = new();
 
+    /// <summary>A tab the overview reads from: its name, the problems it found (null until it has run), and how to run it.</summary>
+    sealed record Source(Func<string> Header, Func<List<(Light Light, string Text)>?> Problems, Func<Task> Run);
+
+    readonly List<Source> _sources = [];
+    event Action? ResultsChanged;
+
     /// <summary>
     /// A tab: its name, what it checks, how to run it, and what to ask the agent about it.
     /// The texts are functions, so they come out in the language picked when they are shown.
@@ -142,6 +148,7 @@ public partial class DiagnosticsPage : UserControl
         foreach (var check in checks)
             Tabs.Items.Add(BuildTab(check));
         Tabs.Items.Insert(4, BuildGamesTab());
+        Tabs.Items.Insert(0, BuildOverviewTab());
         Tabs.SelectionChanged += (_, _) => ((Tabs.SelectedItem as TabItem)?.Tag as Action)?.Invoke();
         AttachedToVisualTree += (_, _) => ((Tabs.SelectedItem as TabItem)?.Tag as Action)?.Invoke();
         Tabs.SelectedIndex = 0;
@@ -197,7 +204,7 @@ public partial class DiagnosticsPage : UserControl
         ToolTip.SetTip(header, check.Intro());
 
         bool started = false, running = false;
-        List<string> flagged = [];
+        List<(Light Light, string Text)> flagged = [];
         Func<string>? report = null;  // the last result, kept so it can be shown again in another language
         Func<string>? error = null;  // a function too, so the "only on Windows" message can switch language
         DateTime updated = default;
@@ -251,6 +258,7 @@ public partial class DiagnosticsPage : UserControl
                 rawExpander.IsVisible = true;
                 askButton.IsEnabled = true;
                 ShowResult();
+                ResultsChanged?.Invoke();
             }
             catch (OperationCanceledException)
             {
@@ -261,6 +269,7 @@ public partial class DiagnosticsPage : UserControl
                 rows.Children.Clear();
                 (report, error) = (null, ex is PlatformNotSupportedException ? OnlyOnWindows : () => ex.Message);
                 ShowResult();
+                ResultsChanged?.Invoke();
             }
             finally
             {
@@ -268,6 +277,10 @@ public partial class DiagnosticsPage : UserControl
                 runButton.IsEnabled = true;
             }
         }
+
+        _sources.Add(new Source(check.Header,
+            () => error is not null ? [(Light.Amber, error())] : report is null ? null : flagged,
+            RunAsync));
 
         // A new language: the tab name, its tip and the result shown switch too.
         L.Changed += () =>
@@ -278,11 +291,12 @@ public partial class DiagnosticsPage : UserControl
                 ShowVerdict(Light.None, CommonText.Investigating, check.Intro());
             else
                 ShowResult();
+            ResultsChanged?.Invoke();
         };
 
         runButton.Click += async (_, _) => await RunAsync();
         // With problems found, PC Doctor is asked about exactly those; otherwise the tab's general question.
-        askButton.Click += (_, _) => status.Text = _ask(flagged.Count == 0 ? check.Question() : AboutProblems(check.Header(), flagged))
+        askButton.Click += (_, _) => status.Text = _ask(flagged.Count == 0 ? check.Question() : AboutProblems(check.Header(), flagged.Select(f => f.Text).ToList()))
             ? CommonText.QuestionSent
             : CommonText.Busy;
 
@@ -304,9 +318,9 @@ public partial class DiagnosticsPage : UserControl
     }
 
     /// <summary>The marked lines of a report, each with the indented lines under it (e.g. which device has a problem).</summary>
-    static List<string> Flagged(string text)
+    static List<(Light Light, string Text)> Flagged(string text)
     {
-        var result = new List<string>();
+        var result = new List<(Light Light, string Text)>();
         bool under = false;
         foreach (string raw in text.Split('\n'))
         {
@@ -314,12 +328,12 @@ public partial class DiagnosticsPage : UserControl
             if (line.StartsWith("  ") && Status.OfLine(line) == Light.None)
             {
                 if (under && line.Trim().Length > 0)
-                    result[^1] += " " + line.Trim();
+                    result[^1] = (result[^1].Light, result[^1].Text + " " + line.Trim());
                 continue;
             }
             under = Status.OfLine(line) != Light.None;
             if (under)
-                result.Add(Status.WithoutMarker(line));
+                result.Add((Status.OfLine(line), Status.WithoutMarker(line)));
         }
         return result;
     }

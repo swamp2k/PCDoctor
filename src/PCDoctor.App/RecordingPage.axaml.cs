@@ -133,11 +133,11 @@ public partial class RecordingPage : UserControl
             ? L.T("Hvorfor hakker mit spil?", "Why does my game stutter?", "Varför hackar mitt spel?", "Hvorfor hakker spillet mitt?", "Warum ruckelt mein Spiel?")
             : L.T("Optag ydelse", "Record performance", "Spela in prestanda", "Ta opp ytelse", "Leistung aufzeichnen");
         IntroText.Text = _gameMode
-            ? L.T("Start spillet og vælg det her. Tryk Start, og spil til det hakker. Kom tilbage og tryk Stop, så forklarer PC Doctor, hvad der holdt spillet tilbage.",
-                  "Start the game and pick it here. Press Start and play until it stutters. Come back and press Stop, and PC Doctor will explain what held the game back.",
-                  "Starta spelet och välj det här. Tryck Starta och spela tills det hackar. Kom tillbaka och tryck Stopp, så förklarar PC Doctor vad som höll tillbaka spelet.",
-                  "Start spillet og velg det her. Trykk Start, og spill til det hakker. Kom tilbake og trykk Stopp, så forklarer PC Doctor hva som holdt spillet tilbake.",
-                  "Starte das Spiel und wähle es hier aus. Drücke Start und spiele, bis es ruckelt. Komm zurück und drücke Stopp, dann erklärt PC Doctor, was das Spiel ausgebremst hat.")
+            ? L.T("Start spillet og vælg det her. Tryk Start, og spil til det hakker. Kom tilbage og tryk Stop for at se resultatet. Vil du have det forklaret, så tryk Spørg PC Doctor.",
+                  "Start the game and pick it here. Press Start and play until it stutters. Come back and press Stop to see the result. Press Ask PC Doctor if you want it explained.",
+                  "Starta spelet och välj det här. Tryck Starta och spela tills det hackar. Kom tillbaka och tryck Stopp för att se resultatet. Vill du ha det förklarat, tryck Fråga PC Doctor.",
+                  "Start spillet og velg det her. Trykk Start, og spill til det hakker. Kom tilbake og trykk Stopp for å se resultatet. Vil du ha det forklart, trykk Spør PC Doctor.",
+                  "Starte das Spiel und wähle es hier aus. Drücke Start und spiele, bis es ruckelt. Komm zurück und drücke Stopp, um das Ergebnis zu sehen. Möchtest du es erklärt haben, drücke PC Doctor fragen.")
             : L.T("Tryk Start, brug PC'en som normalt, og tryk Stop. Stopper selv efter 15 minutter.",
                   "Press Start, use the PC as usual, and press Stop. Stops by itself after 15 minutes.",
                   "Tryck Starta, använd datorn som vanligt och tryck Stopp. Stannar av sig själv efter 15 minuter.",
@@ -284,8 +284,7 @@ public partial class RecordingPage : UserControl
             : L.T("Optagelse gemt.", "Recording saved.", "Inspelningen sparad.", "Opptaket er lagret.", "Aufzeichnung gespeichert.");
         FillList(select: r.Id);
         Display(r);
-        if (_gameMode && r.Game is not null)
-            Ask();
+        // The analysis only starts when the user asks for it themselves.
     }
 
     void SetRecording(bool on)

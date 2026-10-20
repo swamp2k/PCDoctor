@@ -221,6 +221,21 @@ public sealed class OtherGameLogsTests : IDisposable
     }
 
     [Fact]
+    public async Task Xbox_app_games_are_found_by_package_logs_and_crash_reports()
+    {
+        string logs = Path.Combine(Local, "Packages", "Contoso.CozyQuest_8wekyb3d8bbwe", "LocalState", "Saved", "Logs");
+        Directory.CreateDirectory(logs);
+        File.WriteAllText(Path.Combine(logs, "Game.log"), "LogWindows: Error: boom");
+        string wer = Path.Combine(Local, "Microsoft", "Windows", "WER", "ReportArchive", "AppCrash_x");
+        Directory.CreateDirectory(wer);
+        File.WriteAllText(Path.Combine(wer, "Report.wer"), "AppName=Halo.exe\r\nAppPath=D:\\XboxGames\\Halo\\Content\\Halo.exe\r\n");
+
+        var games = new OtherGamesLocator(Local, LocalLow, Path.Combine(_root, "pd")).Find();
+        Assert.Contains(games, g => g.Name == "CozyQuest" && g.Format == "unreal");
+        Assert.Contains(games, g => g.Name == "Halo" && g.Format == "wer");
+    }
+
+    [Fact]
     public async Task No_games_gives_a_plain_note()
     {
         var r = await new OtherGameLogsTool(new OtherGamesLocator(Local, LocalLow)).RunAsync(Json.Parse("{}"), CancellationToken.None);

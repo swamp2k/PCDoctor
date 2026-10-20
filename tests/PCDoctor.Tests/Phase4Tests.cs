@@ -236,6 +236,18 @@ public sealed class OtherGameLogsTests : IDisposable
     }
 
     [Fact]
+    public void Games_in_a_custom_named_xbox_folder_are_found()
+    {
+        string gamingRoot = Path.Combine(_root, "xbox games");
+        string logs = Path.Combine(gamingRoot, "RuneScape- Dragonwilds", "Content", "RSDragonwilds", "Saved", "Logs");
+        Directory.CreateDirectory(logs);
+        File.WriteAllText(Path.Combine(logs, "RSDragonwilds.log"), "LogWindows: Error: boom");
+
+        var games = new OtherGamesLocator(Local, LocalLow, Path.Combine(_root, "pd"), [gamingRoot]).Find();
+        Assert.Contains(games, g => g.Name == "RuneScape- Dragonwilds" && g.Files.Count == 1);
+    }
+
+    [Fact]
     public async Task No_games_gives_a_plain_note()
     {
         var r = await new OtherGameLogsTool(new OtherGamesLocator(Local, LocalLow)).RunAsync(Json.Parse("{}"), CancellationToken.None);

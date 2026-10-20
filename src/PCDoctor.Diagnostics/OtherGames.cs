@@ -32,11 +32,13 @@ public sealed class OtherGamesLocator
     readonly string _localAppData;
     readonly string _localLow;
     readonly string _programData;
+    readonly IReadOnlyList<string>? _gamingRoots;
 
     /// <param name="localAppData">%LOCALAPPDATA%. Defaults to the current user's.</param>
     /// <param name="localLow">%USERPROFILE%\AppData\LocalLow. Defaults to the current user's.</param>
-    public OtherGamesLocator(string? localAppData = null, string? localLow = null, string? programData = null)
+    public OtherGamesLocator(string? localAppData = null, string? localLow = null, string? programData = null, IReadOnlyList<string>? gamingRoots = null)
     {
+        _gamingRoots = gamingRoots;
         _programData = programData ?? Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         _localAppData = localAppData ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _localLow = localLow ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow");
@@ -80,9 +82,9 @@ public sealed class OtherGamesLocator
         foreach (string pkg in LogFiles.SubDirs(Path.Combine(_localAppData, "Packages")))
         {
             string state = Path.Combine(pkg, "LocalState");
-            foreach (string dir in new[] { state }.Concat(LogFiles.SubDirs(state)))
+            foreach (string saved in SavedFolders(state, 3))
             {
-                string saved = Path.Combine(dir, "Saved");
+                string dir = Path.GetDirectoryName(saved)!;
                 var files = new List<GameLogFile>();
                 files.AddRange(Newest("game_log", LogFiles.SafeFiles(Path.Combine(saved, "Logs"), "*.log")));
                 files.AddRange(Newest("crash_log", LogFiles.SubDirs(Path.Combine(saved, "Crashes")).SelectMany(c => LogFiles.SafeFiles(c, "*.log"))));
@@ -90,9 +92,58 @@ public sealed class OtherGamesLocator
                     found.Add(new OtherGame(StoreName(dir == state ? pkg : dir), "unreal", dir, files));
             }
         }
+        // Games in the Xbox app's install folders (the folder can be named anything and sit on any drive).
+        foreach (string root in GamingRoots())
+            foreach (string game in LogFiles.SubDirs(root))
+            {
+                var files = new List<GameLogFile>();
+                foreach (string saved in SavedFolders(game, 4))
+                {
+                    files.AddRange(Newest("game_log", LogFiles.SafeFiles(Path.Combine(saved, "Logs"), "*.log")));
+                    files.AddRange(Newest("crash_log", LogFiles.SubDirs(Path.Combine(saved, "Crashes")).SelectMany(c => LogFiles.SafeFiles(c, "*.log"))));
+                }
+                if (files.Count > 0)
+                    found.Add(new OtherGame(Path.GetFileName(game), "unreal", game, files));
+            }
         FindStoreCrashes(found);
 
         return found.OrderByDescending(g => g.LastActivity).ToList();
+    }
+
+    /// <summary>The Xbox app's game folders: every fixed drive's .GamingRoot file names one (e.g. D:\xbox games).</summary>
+    IEnumerable<string> GamingRoots()
+    {
+        if (_gamingRoots is not null) return _gamingRoots;
+        var roots = new List<string>();
+        foreach (var drive in DriveInfo.GetDrives())
+        {
+            try
+            {
+                if (drive.DriveType != DriveType.Fixed || !drive.IsReady) continue;
+                string marker = Path.Combine(drive.RootDirectory.FullName, ".GamingRoot");
+                if (!File.Exists(marker)) continue;
+                // "RGBX", a version number, then the folder as null-terminated UTF-16 (relative to the drive).
+                byte[] bytes = File.ReadAllBytes(marker);
+                if (bytes.Length > 8)
+                {
+                    string rel = System.Text.Encoding.Unicode.GetString(bytes, 8, bytes.Length - 8).Split('\0')[0].Trim('\\', '/');
+                    if (rel.Length > 0) roots.Add(Path.Combine(drive.RootDirectory.FullName, rel));
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+        return roots;
+    }
+
+    /// <summary>Folders named "Saved" (where Unreal Engine games keep Logs and Crashes) at most <paramref name="depth"/> levels down.</summary>
+    static IEnumerable<string> SavedFolders(string dir, int depth)
+    {
+        string saved = Path.Combine(dir, "Saved");
+        if (Directory.Exists(saved)) yield return saved;
+        if (depth <= 0) yield break;
+        foreach (string sub in LogFiles.SubDirs(dir))
+            foreach (string s in SavedFolders(sub, depth - 1))
+                yield return s;
     }
 
     /// <summary>"Publisher.Game_abc123" or ...\Game -> "Game".</summary>
@@ -112,13 +163,15 @@ public sealed class OtherGamesLocator
             Path.Combine(_localAppData, "Microsoft", "Windows", "WER", "ReportArchive"),
             Path.Combine(_programData, "Microsoft", "Windows", "WER", "ReportArchive"),
         };
+        var gaming = GamingRoots().ToList();
         foreach (string root in roots)
             foreach (string report in LogFiles.SubDirs(root).SelectMany(d => LogFiles.SafeFiles(d, "Report.wer")))
             {
                 try
                 {
                     string text = LogFiles.ReadCapped(report, fromEnd: false);
-                    if (!Regex.IsMatch(text, @"\\(XboxGames|WindowsApps)\\", RegexOptions.IgnoreCase)) continue;
+                    if (!Regex.IsMatch(text, @"\\(XboxGames|WindowsApps)\\", RegexOptions.IgnoreCase)
+                        && !gaming.Any(g => text.Contains(g + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))) continue;
                     var m = Regex.Match(text, @"^AppName=(.+?)\r?$", RegexOptions.Multiline);
                     string name = m.Success ? m.Groups[1].Value.Trim() : "";
                     if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) name = name[..^4];

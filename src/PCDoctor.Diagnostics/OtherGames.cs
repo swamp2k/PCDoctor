@@ -31,11 +31,13 @@ public sealed class OtherGamesLocator
 
     readonly string _localAppData;
     readonly string _localLow;
+    readonly string _programData;
 
     /// <param name="localAppData">%LOCALAPPDATA%. Defaults to the current user's.</param>
     /// <param name="localLow">%USERPROFILE%\AppData\LocalLow. Defaults to the current user's.</param>
-    public OtherGamesLocator(string? localAppData = null, string? localLow = null)
+    public OtherGamesLocator(string? localAppData = null, string? localLow = null, string? programData = null)
     {
+        _programData = programData ?? Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         _localAppData = localAppData ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _localLow = localLow ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow");
     }
@@ -74,7 +76,64 @@ public sealed class OtherGamesLocator
             }
         }
 
+        // Xbox app / Microsoft Store games: logs sit inside the app's package folder, and Windows keeps crash reports (WER).
+        foreach (string pkg in LogFiles.SubDirs(Path.Combine(_localAppData, "Packages")))
+        {
+            string state = Path.Combine(pkg, "LocalState");
+            foreach (string dir in new[] { state }.Concat(LogFiles.SubDirs(state)))
+            {
+                string saved = Path.Combine(dir, "Saved");
+                var files = new List<GameLogFile>();
+                files.AddRange(Newest("game_log", LogFiles.SafeFiles(Path.Combine(saved, "Logs"), "*.log")));
+                files.AddRange(Newest("crash_log", LogFiles.SubDirs(Path.Combine(saved, "Crashes")).SelectMany(c => LogFiles.SafeFiles(c, "*.log"))));
+                if (files.Count > 0)
+                    found.Add(new OtherGame(StoreName(dir == state ? pkg : dir), "unreal", dir, files));
+            }
+        }
+        FindStoreCrashes(found);
+
         return found.OrderByDescending(g => g.LastActivity).ToList();
+    }
+
+    /// <summary>"Publisher.Game_abc123" or ...\Game -> "Game".</summary>
+    static string StoreName(string folder)
+    {
+        string n = Path.GetFileName(folder);
+        n = n.Split('_')[0];
+        return n.Contains('.') ? n[(n.LastIndexOf('.') + 1)..] : n;
+    }
+
+    /// <summary>Windows Error Reporting keeps a Report.wer for every crash; the ones from XboxGames / WindowsApps are Xbox app games.</summary>
+    void FindStoreCrashes(List<OtherGame> found)
+    {
+        var byGame = new Dictionary<string, List<GameLogFile>>(StringComparer.OrdinalIgnoreCase);
+        var roots = new[]
+        {
+            Path.Combine(_localAppData, "Microsoft", "Windows", "WER", "ReportArchive"),
+            Path.Combine(_programData, "Microsoft", "Windows", "WER", "ReportArchive"),
+        };
+        foreach (string root in roots)
+            foreach (string report in LogFiles.SubDirs(root).SelectMany(d => LogFiles.SafeFiles(d, "Report.wer")))
+            {
+                try
+                {
+                    string text = LogFiles.ReadCapped(report, fromEnd: false);
+                    if (!Regex.IsMatch(text, @"\\(XboxGames|WindowsApps)\\", RegexOptions.IgnoreCase)) continue;
+                    var m = Regex.Match(text, @"^AppName=(.+?)\r?$", RegexOptions.Multiline);
+                    string name = m.Success ? m.Groups[1].Value.Trim() : "";
+                    if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
+                    if (name.Length == 0) continue;
+                    var fi = new FileInfo(report);
+                    if (!byGame.TryGetValue(name, out var list)) byGame[name] = list = [];
+                    list.Add(new GameLogFile("crash_log", fi.FullName, fi.LastWriteTime, fi.Length));
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            }
+        foreach (var (name, list) in byGame)
+        {
+            var files = list.OrderByDescending(f => f.Modified).Take(FilesPerKind).ToList();
+            found.Add(new OtherGame(name, "wer", Path.GetDirectoryName(files[0].Path) ?? "", files));
+        }
     }
 
     static IEnumerable<GameLogFile> Newest(string kind, IEnumerable<string> paths) =>
@@ -95,6 +154,9 @@ public static partial class GameLog
 
     [GeneratedRegex(@"(\[FLog::Error\]|\[FLog::Crash|\bError\b|crash|Disconnect|Lost connection|timed out)", RegexOptions.IgnoreCase)]
     private static partial Regex RobloxProblem();
+
+    [GeneratedRegex(@"^(Sig\[\d+\]\.Value|EventType|AppPath|FaultModule|ExceptionCode|Fault)", RegexOptions.IgnoreCase | RegexOptions.Multiline)]
+    private static partial Regex WerProblem();
 
     /// <summary>Phrases that, when present, point at a likely cause. The model gets the hint and decides.</summary>
     static readonly (Regex Pattern, string Hint)[] Signs =
@@ -121,6 +183,7 @@ public static partial class GameLog
         {
             "unity" => UnityProblem(),
             "roblox" => RobloxProblem(),
+            "wer" => WerProblem(),
             _ => UnrealProblem(),
         };
         var problems = lines.Where(l => problem.IsMatch(l)).ToList();

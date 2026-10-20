@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="using:PCDoctor.App"
         x:Class="PCDoctor.App.MainWindow"
-        Title="PC Doctor" Width="1200" Height="800" MinWidth="900" MinHeight="560">
+        Icon="avares://PCDoctor/icon.ico" Title="PC Doctor" Width="1200" Height="800" MinWidth="900" MinHeight="560">
     <DockPanel>
 
         <!-- Sidebar: one button per page, and the mode and language at the bottom -->
@@ -68,6 +68,12 @@
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0z M12 7v5l3 2"/>
                             <TextBlock Text="{app:Tr Historik, History, Historik, Historikk, Verlauf}"/>
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="UpdateButton" Classes="nav">
+                        <StackPanel Orientation="Horizontal" Spacing="12">
+                            <app:Icon Data="M12 4v11 M7 10l5 5 5-5 M5 20h14"/>
+                            <TextBlock Text="{app:Tr Søg efter opdatering, Check for updates, Sök efter uppdatering, Se etter oppdatering, Nach Updates suchen}"/>
                         </StackPanel>
                     </Button>
                     <Button x:Name="SettingsButton" Classes="nav">

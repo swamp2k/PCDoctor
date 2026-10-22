@@ -164,3 +164,17 @@ public class GameRecordingTests
         finally { Directory.Delete(dir, true); }
     }
 }
+
+public class ActiveProgramsTests
+{
+    [Xunit.Fact]
+    public void ListsRunningProgramsIncludingThisOne()
+    {
+        var monitor = new PCDoctor.Diagnostics.ActivePrograms();
+        monitor.Sample();
+        var list = monitor.Sample();
+        Xunit.Assert.NotEmpty(list);
+        Xunit.Assert.All(list, p => Xunit.Assert.InRange(p.CpuPercent, 0, 100));
+        Xunit.Assert.Contains(list, p => p.Name == System.Diagnostics.Process.GetCurrentProcess().ProcessName);
+    }
+}

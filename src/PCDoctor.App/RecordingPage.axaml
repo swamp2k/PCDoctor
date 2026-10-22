@@ -9,7 +9,7 @@
         <TextBlock DockPanel.Dock="Top" x:Name="IntroText" Classes="muted" FontSize="13" TextWrapping="Wrap" Margin="0,2,0,14"/>
         <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="0,0,0,8">
             <ComboBox Grid.Column="0" x:Name="GameBox" Width="300"/>
-            <Button Grid.Column="1" x:Name="RefreshGamesButton" ToolTip.Tip="{app:Tr Opdater listen over spil, Refresh the list of games, Uppdatera listan över spel, Oppdater listen over spill, Liste der Spiele aktualisieren}" Padding="12,0" Margin="8,0,0,0">
+            <Button Grid.Column="1" x:Name="RefreshGamesButton" ToolTip.Tip="{app:Tr Opdater listen over programmer, Refresh the list of programs, Uppdatera listan över program, Oppdater listen over programmer, Liste der Programme aktualisieren}" Padding="12,0" Margin="8,0,0,0">
                 <app:Icon Data="M20 11a8 8 0 1 0-2.3 5.7 M20 4v7h-7" Width="16" Height="16"/>
             </Button>
             <CheckBox Grid.Column="2" x:Name="FpsBox" Content="{app:Tr Mål FPS, Measure FPS, Mät FPS, Mål FPS, FPS messen}" ToolTip.Tip="{app:Tr Windows beder om administrator-tilladelse, Windows asks for administrator permission, Windows ber om administratörsbehörighet, Windows ber om administratortillatelse, Windows fragt nach Administratorberechtigung}" Margin="16,0,0,0"/>
@@ -72,6 +72,31 @@
                     <app:NetChart x:Name="NetGraph" Height="64"/>
                 </DockPanel>
             </Grid>
+        </Border>
+
+        <!-- Every running program right now (Live View only) -->
+        <Border DockPanel.Dock="Right" x:Name="ProgramsCard" Classes="card" Padding="14,12" Width="330" Margin="12,0,0,0" IsVisible="False">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="label" Text="{app:Tr AKTIVE PROGRAMMER, ACTIVE PROGRAMS, AKTIVA PROGRAM, AKTIVE PROGRAMMER, AKTIVE PROGRAMME}" Margin="0,0,0,6"/>
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,60,70" Margin="0,0,0,4">
+                    <TextBlock Grid.Column="0" Classes="muted" FontSize="12" Text="{app:Tr Program, Program, Program, Program, Programm}"/>
+                    <TextBlock Grid.Column="1" Classes="muted" FontSize="12" Text="CPU" HorizontalAlignment="Right"/>
+                    <TextBlock Grid.Column="2" Classes="muted" FontSize="12" Text="RAM" HorizontalAlignment="Right"/>
+                </Grid>
+                <ScrollViewer>
+                    <ItemsControl x:Name="ProgramsList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="app:ProgramRow">
+                                <Grid ColumnDefinitions="*,60,70" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Cpu}" HorizontalAlignment="Right" FontSize="13"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Ram}" HorizontalAlignment="Right" FontSize="13"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
         </Border>
 
         <!-- Race / graphs toggle (game page only) -->

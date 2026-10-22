@@ -1,98 +1,107 @@
 # PC Doctor
 
-A desktop app for the family's Windows PCs, Linux PCs and Steam Decks. You describe a problem in plain words
-("Why does Minecraft crash?", "Is my internet down?") and an AI agent (Claude Haiku 5.5)
-investigates it itself with built-in diagnostic tools and, if you allow it, PowerShell.
+A simple app that helps the family fix PC problems. You describe the problem in plain words
+("Why does Minecraft crash?", "Is my internet down?") and an AI helper (Claude Haiku 5.5)
+investigates it itself with built-in checks and, if you allow it, commands on the PC.
 
-No login, no accounts, no cloud backend. The only thing it talks to is the Anthropic API.
+It runs on Windows and on Linux, including the Steam Deck.
+No login, no accounts, no cloud server. The only thing it talks to is the Anthropic API.
+
+**Languages:** the app itself is available in Danish, English, Swedish, Norwegian and German.
+Danish is the default; change it with the flag button in the top bar.
 
 ## Getting the app
 
-Every push builds `PCDoctor.exe` on a Windows machine in GitHub Actions:
-open the repository's **Actions** tab, pick the latest green "Build and test (Windows)" run,
-and download the **PCDoctor-win-x64** artifact. It is a single self-contained `.exe`;
-nothing else needs to be installed.
+Download the newest version from the repository's **Releases** page (right side of the GitHub page):
 
-Every merge to main also publishes both files on the **Releases** page:
-`PCDoctor.exe` for Windows and `PCDoctor-linux-x64` for Linux and the Steam Deck.
+- **Windows:** `PCDoctor.exe`
+- **Linux / Steam Deck:** `PCDoctor-linux-x64`
 
-## Linux and Steam Deck (SteamOS)
+Each is a single file; nothing else needs to be installed. A new release appears automatically every time a change is merged.
 
-`PCDoctor-linux-x64` is one self-contained file. It runs from the home folder and installs nothing, so SteamOS's
-read-only system part is never touched and survives every SteamOS update.
+### Keeping it up to date
 
-1. On the Steam Deck, switch to **Desktop Mode** (power menu). Download `PCDoctor-linux-x64` from the Releases page
-   into e.g. `~/Applications` (make the folder if needed).
-2. Right-click the file > **Properties** > **Permissions** > tick **Is executable** (only needed once;
-   "Opdater nu" keeps the mark on later updates).
-3. Double-click it. The API key is saved in `~/.local/share/PCDoctor/api-key`, readable only by your user.
-4. To use it from Game Mode: right-click the file > **Add to Steam**. In Game Mode, open it from the Library
-   under "Non-Steam". Steam + X opens the on-screen keyboard; the trackpad works as a mouse.
-
-What works on Linux: the chat, Diagnostics (hardware incl. temperatures and battery, usage, network, the system log,
-game services), Live View, performance recordings (CPU, AMD graphics such as the Steam Deck's, RAM, disk, network, ping),
-"Seneste spil" incl. Steam games running through Proton (also on the memory card), Log Review, history and "Opdater nu".
-Free commands run in bash instead of PowerShell, never with sudo. FPS measuring is Windows-only; on the Steam Deck the
-built-in Performance Overlay shows FPS.
+When a newer version exists, the app shows an **Update now** button. Click it and PC Doctor downloads the new version,
+replaces itself and restarts. You do not have to download it by hand again.
 
 ## First start
 
+### Windows
+
 1. Start `PCDoctor.exe`. Windows SmartScreen may warn because the file is not signed;
    choose "More info" and "Run anyway".
-2. Click **Indstillinger**, paste your Anthropic API key, click **Gem nøgle**, then **Test forbindelse**.
-   The key is saved in Windows Credential Manager for your Windows user and reused automatically.
-   It is never stored in the program file or a settings file.
+2. Open **Settings**, paste your Anthropic API key, save it, then test the connection.
+   The key is saved in Windows Credential Manager for your Windows user, never in the program or a settings file.
 3. Type a question and press Enter.
+
+### Steam Deck (and other Linux PCs)
+
+1. Switch to **Desktop Mode** (Steam button, Power, Switch to Desktop).
+2. Download `PCDoctor-linux-x64` from the Releases page, for example into Downloads.
+3. Make the file runnable: right-click it in the file manager (Dolphin), choose **Properties**, open **Permissions**,
+   tick **Is executable** and click OK. (In a terminal: `chmod +x PCDoctor-linux-x64`.)
+4. Double-click the file to start it.
+5. Open **Settings** and add your API key as on Windows. On Linux it is kept in a file only your user can read
+   (`~/.local/share/PCDoctor/api-key`).
+
+Measuring FPS is Windows-only; everything else works on Linux too.
 
 ## The three modes
 
-| Mode | What the agent may do |
+| Mode | What PC Doctor may do |
 |---|---|
-| **Read-only** (default at every start) | Only built-in tools that read information. No free PowerShell at all. |
-| **Assisted** | Built-in tools freely. Every PowerShell command is shown in full (with its folder) and runs only if you click "Kør kommandoen". |
-| **YOLO** | PowerShell without asking, with your normal Windows rights. Never as administrator. Not risk-free. |
+| **Read-only** (default at every start) | Only built-in checks that read information. It cannot run its own commands. |
+| **Assisted** | Built-in checks freely. Every command is shown in full first and only runs if you approve it. |
+| **YOLO** | Runs commands without asking, with your normal user rights. Never as administrator. Not risk-free. |
 
 **Stop** ends the investigation and kills any running command. Each command also has a time limit.
 
-## Recording performance
+## What the app can do
 
-**Optag ydelse** opens the recorder. Press Start, play the game (or do whatever is slow), come back and press Stop.
-It stops by itself after 15 minutes. About once a second it notes CPU, graphics card (GPU), RAM and disk use, which
-programs used the CPU and the graphics card most, the processor's speed (it slows down when it gets too hot or saves power),
-how much graphics memory (VRAM) is in use, and a ping to the internet (1.1.1.1) to catch lag spikes. The screen is not recorded. Afterwards you see a chart and a summary, and
-**Spørg PC Doctor om optagelsen** asks the agent what held the PC back. The newest 20 recordings are kept.
+### Ask PC Doctor
 
-## Why does my game stutter?
+The main window is a chat. Ask about anything on the PC and PC Doctor looks into it and answers in your language.
+It only talks about PC topics.
 
-**Hvorfor hakker mit spil?** is the one-button version of the recorder. Start the game, pick it in the list, press Start,
-play until it stutters, then come back and press Stop. Besides the whole PC it follows the game itself (its own CPU,
-graphics card and RAM use). With **Mål også FPS** ticked it also measures frames per second: average, best and worst
-second, 1 % and 0.1 % lows, and visible hitches. When you press Stop, PC Doctor is asked automatically what held the game back.
+### Diagnostics (no AI needed)
 
-FPS is measured the way PresentMon and FPS overlays do it: Windows notes every frame the game shows (an ETW event), and
-PC Doctor counts the chosen game's frames. Windows only gives this to programs with administrator rights. That is why
-Windows asks "Do you want to allow this app to make changes?" when you press Start. Only a small, windowless copy of
-PCDoctor.exe that does nothing but count frames runs as administrator, and it stops when you press Stop, after 16 minutes,
-or when PC Doctor closes. The main window never runs as administrator. If you say no, everything else is still recorded.
-Games that draw through DirectX are measured exactly; OpenGL and Vulkan games (such as Minecraft Java) are measured through
-the graphics driver's own events, which works on most PCs.
+**Diagnostics** shows the same checks the AI uses, directly, with no API key and no AI call. The tabs cover hardware,
+usage, network, the event log, game logs and whether a game service (Fortnite, Discord, Steam...) is down.
+**Overview** sums up everything that looks red or yellow. **Ask PC Doctor** hands a found problem to the chat.
+Nothing on the PC is changed.
 
-## Diagnostics without AI
+### Recent games
 
-**Diagnostik** opens a page with seven tabs: Hardware, Forbrug (usage), Netværk, Hændelser (event log), Minecraft
-(crash reports and a mod check), Andre spil (logs from Fortnite, Roblox and other games) and Spiltjenester
-(is a game's service down, or is it our internet?).
-Each tab runs the same built-in tools the agent uses, directly, and shows the result in plain Danish.
-It needs no API key, makes no AI call, and changes nothing on the PC (Spiltjenester reads public status pages on the internet). "Vis rådata" shows exactly what the agent
-would see, and **Spørg PC Doctor om dette** hands the topic to the agent in the main window.
+**Recent games** lists up to 20 games that wrote log files lately, including Steam, Epic, Xbox app and Minecraft games
+(and Steam/Proton games on Linux). Pick one, click **Investigate** and choose what is wrong:
+it crashes, it stutters, it lags, or it cannot go online.
 
-## History
+### Record performance
 
-**Historik** lists earlier conversations, newest first. Pick one to see the questions and answers (**Samtale**),
-every check PC Doctor ran with its input and result (**Aktivitet**), and, for troubleshooting, exactly what was sent
-to the AI and what came back (**API-forespørgsler**). **Om samtalen** shows the model, language, mode, settings and
-a short description of the PC. The API key and anything that looks like a password or key are replaced by `[skjult]`
-before anything is saved. The newest 100 conversations are kept; **Slet samtalen** deletes one.
+Press Start, play the game (or do whatever is slow), come back and press Stop. It stops by itself after 15 minutes.
+About once a second it notes CPU, graphics card, RAM and disk use, the busiest programs, the processor's speed,
+graphics memory and a ping to the internet to catch lag spikes. The screen is not recorded.
+Afterwards you see a chart and a summary, and can ask PC Doctor what held the PC back. The newest 20 recordings are kept.
+
+On Windows you can also measure FPS (frames per second). Windows only allows this with administrator rights, so it asks
+"Do you want to allow this app to make changes?". Only a small, windowless helper that counts frames runs as administrator;
+the main window never does. If you say no, everything else is still recorded.
+
+### Live View
+
+Shows all running programs and a live "race" between CPU, graphics card, RAM, disk and network. The bar in front is the
+likely reason a game stutters. A network card shows ping and speed, and you can switch to classic graphs.
+
+### Log Review
+
+Under Record performance. Open a game's log file and PC Doctor finds the game and the error lines and explains them.
+Only the error lines are sent (or the whole log, up to 600 KB, if you choose).
+
+### History
+
+**History** lists earlier conversations, newest first: the questions and answers, every check PC Doctor ran, and,
+for troubleshooting, exactly what was sent to the AI. The API key and anything that looks like a password is hidden
+before anything is saved. The newest 100 conversations are kept, and you can delete any of them.
 
 ## Built-in tools
 
@@ -110,12 +119,12 @@ before anything is saved. The newest 100 conversations are kept; **Slet samtalen
 | `other_game_logs` | Logs of Fortnite, Rocket League, Fall Guys and other Unreal Engine games, Roblox and Unity games, with warning signs (graphics driver crash, out of memory, anti-cheat, lost connection) |
 | `service_status` | Is Fortnite, Epic, Discord, Roblox, Minecraft, Steam or Xbox down? Reads the official status page where there is one (Epic, Discord) and tests whether this PC reaches the servers and a neutral site |
 | `game_requirements` | Can this PC run a game? Requirements built in for Minecraft, Fortnite and Roblox (copied from the publishers 2026-10-14), any other game from the Steam store; compares RAM and disk space |
-| `performance_recording` | Reads a recording made with Optag ydelse: summary, timeline and top programs |
-| `shell_execute` | Windows PowerShell, governed by the mode above |
+| `performance_recording` | Reads a recording made with Record performance: summary, timeline and top programs |
+| `shell_execute` | Windows PowerShell (bash on Linux), governed by the mode above |
 
 ## Where things are saved
 
-Everything stays on the PC, in `%LOCALAPPDATA%\PCDoctor`:
+Everything stays on the PC, in `%LOCALAPPDATA%\PCDoctor` on Windows and `~/.local/share/PCDoctor` on Linux:
 
 - `history.db` the conversation history (SQLite): questions, tool calls, commands, results, answers, approvals
   and the API requests and responses, with secrets masked. Newest 100 conversations.
@@ -129,8 +138,9 @@ Everything stays on the PC, in `%LOCALAPPDATA%\PCDoctor`:
 src/PCDoctor.Core              contracts: tools, modes, settings, process runner
 src/PCDoctor.Agent             agent loop, permission check, Anthropic API adapter
 src/PCDoctor.Diagnostics       cross-platform tools and analysis (processes, resources, network, Minecraft logs,
-                               event grouping, plain-Danish reports for the Diagnostics page)
+                               event grouping, plain-language reports for the Diagnostics page)
 src/PCDoctor.Platform.Windows  WMI hardware, Event Log, performance counters, PowerShell, Credential Manager
+src/PCDoctor.Platform.Linux    Linux hardware, system journal, bash, API key file
 src/PCDoctor.Storage           SQLite conversation history
 src/PCDoctor.App               Avalonia window
 tests/PCDoctor.Tests           xUnit tests

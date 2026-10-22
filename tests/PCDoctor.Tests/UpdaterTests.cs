@@ -20,21 +20,21 @@ public class UpdaterTests
     [Fact]
     public void Newer_release_is_offered()
     {
-        var info = Updater.ParseRelease(Release("v1.0.30"), new Version(1, 0, 25));
+        var info = Updater.ParseRelease(Release("v1.0.30"), new Version(1, 0, 25), Updater.WindowsAsset);
         Assert.Equal(new Version(1, 0, 30), info?.Version);
     }
 
     [Fact]
     public void Same_or_older_release_is_ignored() =>
-        Assert.Null(Updater.ParseRelease(Release("v1.0.30"), new Version(1, 0, 30)));
+        Assert.Null(Updater.ParseRelease(Release("v1.0.30"), new Version(1, 0, 30), Updater.WindowsAsset));
 
     [Fact]
     public void Link_outside_the_project_is_refused() =>
-        Assert.Null(Updater.ParseRelease(Release("v1.0.30", "https://evil.example/PCDoctor.exe"), new Version(1, 0, 1)));
+        Assert.Null(Updater.ParseRelease(Release("v1.0.30", "https://evil.example/PCDoctor.exe"), new Version(1, 0, 1), Updater.WindowsAsset));
 
     [Fact]
     public void Release_without_the_exe_is_ignored() =>
-        Assert.Null(Updater.ParseRelease(Release("v1.0.30", name: "other.zip"), new Version(1, 0, 1)));
+        Assert.Null(Updater.ParseRelease(Release("v1.0.30", name: "other.zip"), new Version(1, 0, 1), Updater.WindowsAsset));
 
     [Fact]
     public void Install_swaps_files_and_cleanup_removes_the_old_one()
@@ -56,5 +56,23 @@ public class UpdaterTests
     [InlineData(@"C:\Program Files\dotnet\dotnet.exe", false)]
     [InlineData("/usr/bin/dotnet", false)]
     public void Self_update_works_whatever_the_exe_is_called(string path, bool expected) =>
-        Assert.Equal(expected, Updater.CanSelfUpdate(path));
+        Assert.Equal(expected, Updater.CanSelfUpdate(path, windows: true));
+
+    [Theory]
+    [InlineData("/home/deck/PCDoctor-linux-x64", true)]
+    [InlineData("/home/deck/Downloads/PCDoctor", true)]
+    [InlineData("/usr/bin/dotnet", false)]
+    [InlineData("/home/deck/src/PCDoctor.dll", false)]
+    public void Self_update_works_on_linux(string path, bool expected) =>
+        Assert.Equal(expected, Updater.CanSelfUpdate(path, windows: false));
+
+    [Fact]
+    public void Linux_picks_the_linux_file_from_a_release()
+    {
+        string json = """{"tag_name":"v1.0.30","assets":[""" +
+            """{"name":"PCDoctor.exe","browser_download_url":"https://github.com/swamp2k/PCDoctor/releases/download/v1.0.30/PCDoctor.exe"},""" +
+            """{"name":"PCDoctor-linux-x64","browser_download_url":"https://github.com/swamp2k/PCDoctor/releases/download/v1.0.30/PCDoctor-linux-x64"}]}""";
+        Assert.EndsWith("/PCDoctor-linux-x64", Updater.ParseRelease(json, new Version(1, 0, 1), Updater.LinuxAsset)!.DownloadUrl);
+        Assert.EndsWith("/PCDoctor.exe", Updater.ParseRelease(json, new Version(1, 0, 1), Updater.WindowsAsset)!.DownloadUrl);
+    }
 }

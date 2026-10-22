@@ -44,8 +44,8 @@ public sealed class GamingLogsTool(MinecraftLocator? locator = null) : ITool
             return ToolResult.Json(new
             {
                 installs = Array.Empty<object>(),
-                note = "No Minecraft installation with logs was found in the usual places for this Windows user. " +
-                       "It may be installed for another Windows user, in a custom folder, or never started yet.",
+                note = "No Minecraft installation with logs was found in the usual places for this user. " +
+                       "It may be installed for another user, in a custom folder, or never started yet.",
             });
 
         var newestCrash = installs.SelectMany(i => i.Files)

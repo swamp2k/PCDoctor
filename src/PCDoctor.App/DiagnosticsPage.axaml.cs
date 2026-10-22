@@ -45,7 +45,12 @@ public partial class DiagnosticsPage : UserControl
         Check[] checks =
         [
             new(() => L.T("Hardware", "Hardware", "Hårdvara", "Maskinvare", "Hardware"),
-                () => L.T(
+                () => OperatingSystem.IsLinux() ? L.T(
+                    "Processor, grafikkort og driver, hukommelse, Linux-version, diske, temperaturer og batteri.",
+                    "Processor, graphics card and driver, memory, Linux version, disks, temperatures and battery.",
+                    "Processor, grafikkort och drivrutin, minne, Linux-version, diskar, temperaturer och batteri.",
+                    "Prosessor, skjermkort og driver, minne, Linux-versjon, disker, temperaturer og batteri.",
+                    "Prozessor, Grafikkarte und Treiber, Arbeitsspeicher, Linux-Version, Festplatten, Temperaturen und Akku.") : L.T(
                     "Processor, grafikkort og driver, hukommelse, Windows-version, diske og enheder Windows melder fejl på.",
                     "Processor, graphics card and driver, memory, Windows version, disks and devices Windows reports errors on.",
                     "Processor, grafikkort och drivrutin, minne, Windows-version, diskar och enheter som Windows rapporterar fel på.",
@@ -107,7 +112,12 @@ public partial class DiagnosticsPage : UserControl
                     "Gibt es Probleme mit meiner Internetverbindung? Prüfe den Router, das Internet und die Namensauflösung.")),
 
             new(() => L.T("Hændelser", "Events", "Händelser", "Hendelser", "Ereignisse"),
-                () => L.T(
+                () => OperatingSystem.IsLinux() ? L.T(
+                    "Fejl og kritiske beskeder fra systemloggen de sidste 7 dage, fx grafikdriveren der hænger, programmer der crasher, for lidt hukommelse, diskfejl og overophedning.",
+                    "Errors and critical messages from the system log for the last 7 days, for example the graphics driver hanging, programs crashing, running out of memory, disk errors and overheating.",
+                    "Fel och kritiska meddelanden från systemloggen de senaste 7 dagarna, till exempel grafikdrivrutinen som hänger sig, program som kraschar, för lite minne, diskfel och överhettning.",
+                    "Feil og kritiske meldinger fra systemloggen de siste 7 dagene, for eksempel skjermdriveren som henger, programmer som krasjer, for lite minne, diskfeil og overoppheting.",
+                    "Fehler und kritische Meldungen aus dem Systemprotokoll der letzten 7 Tage, zum Beispiel hängender Grafiktreiber, abstürzende Programme, zu wenig Arbeitsspeicher, Festplattenfehler und Überhitzung.") : L.T(
                     "Fejl og kritiske hændelser fra Windows' hændelseslog de sidste 7 dage, fx uventede genstarter, blåskærme, programmer der crasher og grafikdriveren der genstarter.",
                     "Errors and critical events from the Windows event log for the last 7 days, for example unexpected restarts, blue screens, programs crashing and the graphics driver restarting.",
                     "Fel och kritiska händelser från Windows händelselogg de senaste 7 dagarna, till exempel oväntade omstarter, blåskärmar, program som kraschar och grafikdrivrutinen som startar om.",
@@ -118,7 +128,12 @@ public partial class DiagnosticsPage : UserControl
                     var r = await Tool("system_events", """{"hours":168,"max_groups":40}""", ct);
                     return (() => PlainReport.Events(r), Raw(r));
                 },
-                () => L.T(
+                () => OperatingSystem.IsLinux() ? L.T(
+                    "Kig på fejlene i systemloggen fra de sidste 7 dage. Er der noget alvorligt, og hvad betyder det?",
+                    "Look at the errors in the system log from the last 7 days. Is anything serious, and what does it mean?",
+                    "Titta på felen i systemloggen från de senaste 7 dagarna. Är något allvarligt, och vad betyder det?",
+                    "Se på feilene i systemloggen fra de siste 7 dagene. Er det noe alvorlig, og hva betyr det?",
+                    "Sieh dir die Fehler im Systemprotokoll der letzten 7 Tage an. Ist etwas Ernstes dabei, und was bedeutet es?") : L.T(
                     "Kig på fejlene i Windows' hændelseslog fra de sidste 7 dage. Er der noget alvorligt, og hvad betyder det?",
                     "Look at the errors in the Windows event log from the last 7 days. Is anything serious, and what does it mean?",
                     "Titta på felen i Windows händelselogg från de senaste 7 dagarna. Är något allvarligt, och vad betyder det?",

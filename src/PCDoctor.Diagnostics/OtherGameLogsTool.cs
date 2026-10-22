@@ -12,7 +12,7 @@ public sealed class OtherGameLogsTool(OtherGamesLocator? locator = null) : ITool
     public string Name => "other_game_logs";
     public string Description =>
         "Find the logs of games other than Minecraft: Fortnite, Rocket League, Fall Guys and other Unreal Engine games (game logs and crash logs), " +
-        "Roblox, and Unity games (Player.log). Without 'file' it lists the games found, newest activity first, and reads the newest log of the " +
+        "Roblox, Unity games (Player.log), and on Linux / Steam Deck the same logs for Steam games running through Proton. Without 'file' it lists the games found, newest activity first, and reads the newest log of the " +
         "most recently played game. With 'file' (a path from the list) it reads that log: error lines, warning signs (graphics driver crash, " +
         "out of memory, anti-cheat, lost connection) and the last lines before the game stopped. For Minecraft use gaming_logs.";
     public ToolKind Kind => ToolKind.ReadOnly;
@@ -44,7 +44,7 @@ public sealed class OtherGameLogsTool(OtherGamesLocator? locator = null) : ITool
             return ToolResult.Json(new
             {
                 games = Array.Empty<object>(),
-                note = "No logs from Fortnite, other Unreal Engine games, Roblox or Unity games were found for this Windows user.",
+                note = "No logs from Fortnite, other Unreal Engine games, Roblox or Unity games were found for this user.",
             });
 
         var newest = games[0];

@@ -49,7 +49,7 @@ public sealed class MinecraftModsTool(MinecraftLocator? locator = null) : ITool
                 {
                     installs = installs.Select(i => new { i.Launcher, i.Name, i.Folder }),
                     note = installs.Count == 0
-                        ? "No Minecraft installation was found for this Windows user."
+                        ? "No Minecraft installation was found for this user."
                         : "None of the Minecraft installs has mods; they run plain (vanilla) Minecraft.",
                 });
         }

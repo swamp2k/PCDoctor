@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\PCDoctor.Core\PCDoctor.Core.csproj" />
+    <ProjectReference Include="..\PCDoctor.Diagnostics\PCDoctor.Diagnostics.csproj" />
+  </ItemGroup>
+</Project>

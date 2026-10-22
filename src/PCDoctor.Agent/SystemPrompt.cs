@@ -4,7 +4,41 @@ namespace PCDoctor.Agent;
 
 public static class SystemPrompt
 {
-    public static string For(AnswerLanguage language) => Text.Replace("{LANGUAGE}", language.PromptName());
+    public static string For(AnswerLanguage language) => For(language, OperatingSystem.IsLinux());
+
+    /// <param name="linux">True on Linux and the Steam Deck: the same rules, with Linux words and a few Linux-only tips.</param>
+    public static string For(AnswerLanguage language, bool linux)
+    {
+        string text = Text;
+        if (linux)
+        {
+            text = text
+                .Replace("running locally on a family's Windows PC.", "running locally on a family's Linux PC or Steam Deck (SteamOS).")
+                .Replace("hardware, Windows, drivers, programs,", "hardware, Linux / SteamOS, drivers, programs,")
+                .Replace("- shell_execute runs Windows PowerShell as the current user (never as administrator).",
+                         "- shell_execute runs bash as the current user (never as root, never with sudo).")
+                .Replace("whether Windows or a driver failed at the same moment", "whether Linux or a driver failed at the same moment")
+                .Replace("(blue screens, power loss,", "(graphics driver hangs, out of memory, overheating, power loss,");
+            text += LinuxText;
+        }
+        return text.Replace("{LANGUAGE}", language.PromptName());
+    }
+
+    const string LinuxText = """
+
+        This computer runs Linux:
+        - On a Steam Deck (system_hardware shows Valve Jupiter or Galileo) the system part of SteamOS is read-only and is replaced by
+          every SteamOS update. Never suggest installing system packages (pacman) or changing system files; suggest Flatpak apps from
+          the Discover store, Steam's own settings, or a SteamOS update instead.
+        - Most games run through Proton (Steam's Windows layer). other_game_logs reads their logs from inside each game's Proton folder.
+          Common fixes for a Proton game: try another Proton version (Steam > the game > Properties > Compatibility),
+          verify the game files, and check the game's rating on protondb.com. Anti-cheat games may not run on Linux at all.
+        - Steam Deck has two modes: Game Mode (the normal console screen) and Desktop Mode (a normal PC desktop, from the power menu).
+        - FPS cannot be measured by PC Doctor on Linux. On a Steam Deck the built-in Performance Overlay shows FPS
+          (the "..." button, then the battery icon). Performance recordings of CPU, graphics (AMD), RAM, disk and ping do work.
+        - system_hardware includes temperatures and battery health. A Steam Deck processor runs hot under load; above about 95 °C, or
+          a fan that is loud all the time, points at dust or a blocked vent.
+        """;
 
     const string Text = """
         You are PC Doctor, a troubleshooting assistant running locally on a family's Windows PC.

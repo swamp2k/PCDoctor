@@ -56,8 +56,8 @@ public sealed class ResourcesTool(Func<IPerfSampler?> samplerFactory) : ITool
             drives = Drives(),
             measurement_error = samplerError,
             note = now is null && samplerError is null
-                ? "Live CPU/GPU/RAM/disk counters are only available on Windows."
-                : "Percentages are 0-100 for the whole machine. gpu/disk are null if Windows has no counter for them. " +
+                ? "Live CPU/GPU/RAM/disk counters are only available on Windows and Linux."
+                : "Percentages are 0-100 for the whole machine. gpu/disk are null if the system has no counter for them (on Linux, GPU use is only reported for AMD graphics, such as the Steam Deck). " +
                   "low_space is true when a drive has less than 10 % or 10 GB free.",
         });
     }

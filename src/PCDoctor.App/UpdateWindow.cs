@@ -78,7 +78,8 @@ public sealed class UpdateWindow : Window
         {
             string file = await _updater.DownloadAsync(_update, _exePath, new Progress<double>(p => _progress.Value = p));
             Updater.Install(_exePath, file);
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_exePath) { UseShellExecute = true });
+            // Windows starts the exe through the shell; on Linux "shell" would mean "open with", so start the file directly.
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(_exePath) { UseShellExecute = OperatingSystem.IsWindows() });
             Environment.Exit(0);
         }
         catch (Exception e) when (e is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException or InvalidOperationException)

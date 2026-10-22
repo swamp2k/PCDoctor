@@ -33,20 +33,27 @@ public sealed class OtherGamesLocator
     readonly string _localLow;
     readonly string _programData;
     readonly IReadOnlyList<string>? _gamingRoots;
+    readonly string? _linuxHome;
 
     /// <param name="localAppData">%LOCALAPPDATA%. Defaults to the current user's.</param>
-    /// <param name="localLow">%USERPROFILE%\AppData\LocalLow. Defaults to the current user's.</param>
-    public OtherGamesLocator(string? localAppData = null, string? localLow = null, string? programData = null, IReadOnlyList<string>? gamingRoots = null)
+    /// <param name="localLow">%USERPROFILE%\AppData\LocalLow. Defaults to the current user's (on Linux: ~/.config/unity3d, where Unity keeps it there).</param>
+    /// <param name="linuxHome">On Linux: the home folder to look for Steam games in (Proton and native). Null = not Linux, or not wanted.</param>
+    public OtherGamesLocator(string? localAppData = null, string? localLow = null, string? programData = null, IReadOnlyList<string>? gamingRoots = null,
+        string? linuxHome = null)
     {
-        _gamingRoots = gamingRoots;
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        _linuxHome = linuxHome ?? (OperatingSystem.IsLinux() && localAppData is null ? home : null);
+        _gamingRoots = gamingRoots ?? (OperatingSystem.IsWindows() ? null : []);
         _programData = programData ?? Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         _localAppData = localAppData ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _localLow = localLow ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "LocalLow");
+        _localLow = localLow ?? (OperatingSystem.IsLinux() ? Path.Combine(home, ".config", "unity3d") : Path.Combine(home, "AppData", "LocalLow"));
     }
 
     public List<OtherGame> Find()
     {
         var found = new List<OtherGame>();
+        if (_linuxHome is not null)
+            found.AddRange(FindSteamOnLinux(_linuxHome));
 
         // Unreal Engine: <Game>\Saved\Logs\*.log, and crash folders Saved\Crashes\<crash>\*.log.
         foreach (string dir in LogFiles.SubDirs(_localAppData))
@@ -108,6 +115,23 @@ public sealed class OtherGamesLocator
         FindStoreCrashes(found);
 
         return found.OrderByDescending(g => g.LastActivity).ToList();
+    }
+
+    /// <summary>
+    /// Windows games that Steam runs on Linux through Proton keep their logs inside the game's own pretend Windows drive.
+    /// Each one is searched exactly like a Windows PC, and named after the Steam game.
+    /// </summary>
+    static IEnumerable<OtherGame> FindSteamOnLinux(string home)
+    {
+        foreach (var steam in SteamLibrary.Games(home))
+        {
+            if (SteamLibrary.IsTool(steam) || !Directory.Exists(steam.ProtonUser)) continue;
+            string appData = Path.Combine(steam.ProtonUser, "AppData");
+            var inside = new OtherGamesLocator(Path.Combine(appData, "Local"), Path.Combine(appData, "LocalLow"),
+                Path.Combine(steam.ProtonDriveC, "ProgramData"), gamingRoots: []).Find();
+            foreach (var g in inside)
+                yield return g with { Name = inside.Count == 1 || g.Name.Equals(steam.Name, StringComparison.OrdinalIgnoreCase) ? steam.Name : $"{steam.Name} ({g.Name})" };
+        }
     }
 
     /// <summary>The Xbox app's game folders: every fixed drive's .GamingRoot file names one (e.g. D:\xbox games).</summary>

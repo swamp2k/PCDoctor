@@ -44,6 +44,8 @@ public static class RunningGames
 
     public static List<RunningProgram> List()
     {
+        if (OperatingSystem.IsLinux())
+            return LinuxGames.List();
         var found = new Dictionary<string, RunningProgram>(StringComparer.OrdinalIgnoreCase);
         foreach (var p in Process.GetProcesses())
         {

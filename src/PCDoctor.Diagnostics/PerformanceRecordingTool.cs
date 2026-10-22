@@ -49,7 +49,7 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
             summary = PerfSummary.From(r),
             timeline = Timeline(r),
             recordings = ids,
-            note = "Percentages are 0-100 for the whole machine. gpu/disk are null if Windows had no counter for them. " +
+            note = "Percentages are 0-100 for the whole machine. gpu/disk are null if the system had no counter for them. " +
                    "PercentOfTimeAbove90 is how much of the recording that part was at 90 % or more, which suggests a bottleneck. " +
                    "TopProcesses lists which program used the most CPU, and in how much of the recording; TopGpuProcesses the same for the graphics card. " +
                    "CpuSpeed is % of the processor's normal speed: over 100 is boosting; SlowedPercentOfBusyTime high means the processor was slowed " +

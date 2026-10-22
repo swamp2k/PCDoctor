@@ -1,6 +1,6 @@
 # PC Doctor
 
-A desktop app for the family's Windows PCs. You describe a problem in plain words
+A desktop app for the family's Windows PCs, Linux PCs and Steam Decks. You describe a problem in plain words
 ("Why does Minecraft crash?", "Is my internet down?") and an AI agent (Claude Haiku 5.5)
 investigates it itself with built-in diagnostic tools and, if you allow it, PowerShell.
 
@@ -12,6 +12,28 @@ Every push builds `PCDoctor.exe` on a Windows machine in GitHub Actions:
 open the repository's **Actions** tab, pick the latest green "Build and test (Windows)" run,
 and download the **PCDoctor-win-x64** artifact. It is a single self-contained `.exe`;
 nothing else needs to be installed.
+
+Every merge to main also publishes both files on the **Releases** page:
+`PCDoctor.exe` for Windows and `PCDoctor-linux-x64` for Linux and the Steam Deck.
+
+## Linux and Steam Deck (SteamOS)
+
+`PCDoctor-linux-x64` is one self-contained file. It runs from the home folder and installs nothing, so SteamOS's
+read-only system part is never touched and survives every SteamOS update.
+
+1. On the Steam Deck, switch to **Desktop Mode** (power menu). Download `PCDoctor-linux-x64` from the Releases page
+   into e.g. `~/Applications` (make the folder if needed).
+2. Right-click the file > **Properties** > **Permissions** > tick **Is executable** (only needed once;
+   "Opdater nu" keeps the mark on later updates).
+3. Double-click it. The API key is saved in `~/.local/share/PCDoctor/api-key`, readable only by your user.
+4. To use it from Game Mode: right-click the file > **Add to Steam**. In Game Mode, open it from the Library
+   under "Non-Steam". Steam + X opens the on-screen keyboard; the trackpad works as a mouse.
+
+What works on Linux: the chat, Diagnostics (hardware incl. temperatures and battery, usage, network, the system log,
+game services), Live View, performance recordings (CPU, AMD graphics such as the Steam Deck's, RAM, disk, network, ping),
+"Seneste spil" incl. Steam games running through Proton (also on the memory card), Log Review, history and "Opdater nu".
+Free commands run in bash instead of PowerShell, never with sudo. FPS measuring is Windows-only; on the Steam Deck the
+built-in Performance Overlay shows FPS.
 
 ## First start
 

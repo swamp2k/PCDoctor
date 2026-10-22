@@ -50,7 +50,14 @@ public sealed class MinecraftLocator
         // Launchers that keep one folder per modpack/instance.
         foreach (string dir in SubDirs(System.IO.Path.Combine(_home, "curseforge", "minecraft", "Instances")))
             Add("CurseForge", System.IO.Path.GetFileName(dir), dir);
-        foreach (string dir in SubDirs(System.IO.Path.Combine(_appData, "PrismLauncher", "instances")))
+        // Prism keeps instances in Roaming AppData on Windows, and in ~/.local/share (or the Flatpak's folder) on Linux and the Steam Deck.
+        string[] prismRoots =
+        [
+            System.IO.Path.Combine(_appData, "PrismLauncher", "instances"),
+            System.IO.Path.Combine(_home, ".local", "share", "PrismLauncher", "instances"),
+            System.IO.Path.Combine(_home, ".var", "app", "org.prismlauncher.PrismLauncher", "data", "PrismLauncher", "instances"),
+        ];
+        foreach (string dir in prismRoots.SelectMany(SubDirs))
         {
             // Prism keeps the game in "minecraft" (newer) or ".minecraft" (older) inside the instance.
             string game = Directory.Exists(System.IO.Path.Combine(dir, "minecraft")) ? System.IO.Path.Combine(dir, "minecraft") : System.IO.Path.Combine(dir, ".minecraft");

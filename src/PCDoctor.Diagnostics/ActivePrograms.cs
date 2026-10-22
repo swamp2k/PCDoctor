@@ -29,6 +29,9 @@ public sealed class ActivePrograms
                 {
                     if (p.Id == 0 || p.ProcessName == "Idle")
                         continue;
+                    // Linux lists the kernel's own workers as processes; they use no memory of their own and are not programs.
+                    if (OperatingSystem.IsLinux() && p.WorkingSet64 == 0)
+                        continue;
                     double ram = p.WorkingSet64 / (1024.0 * 1024);
                     double cpu = 0;
                     try

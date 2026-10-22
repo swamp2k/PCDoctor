@@ -25,7 +25,18 @@ public sealed class Tr : MarkupExtension
     public string No { get; set; } = "";
     public string De { get; set; } = "";
 
-    public override object ProvideValue(IServiceProvider serviceProvider) => Binding(Da, En, Sv, No, De);
+    /// <summary>
+    /// The text to show on Linux instead, when it differs: the five languages separated by "|" (da|en|sv|no|de).
+    /// Empty = the same text on every system.
+    /// </summary>
+    public string Linux { get; set; } = "";
+
+    public override object ProvideValue(IServiceProvider serviceProvider)
+    {
+        if (OperatingSystem.IsLinux() && Linux.Split('|') is { Length: 5 } l)
+            return Binding(l[0], l[1], l[2], l[3], l[4]);
+        return Binding(Da, En, Sv, No, De);
+    }
 
     /// <summary>Binds a property of a control made in code to a text in all five languages.</summary>
     public static void Bind(AvaloniaObject target, AvaloniaProperty property, string da, string en, string sv, string no, string de) =>

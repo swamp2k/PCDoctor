@@ -52,7 +52,9 @@ public static class PlainReport
                          (modules.Count > 0 ? $" ({modules.Count} {L.T("moduler", "modules", "moduler", "moduler", "Module")}{speed})" : ""));
         }
         foreach (var os in Rows(r, "os"))
-            b.AppendLine($"Windows: {Str(os, "Caption")}, build {Str(os, "BuildNumber")} ({Str(os, "OSArchitecture")})");
+            b.AppendLine(Str(os, "Kernel") is { Length: > 0 } kernel
+                ? $"Linux: {Str(os, "Caption")}, kernel {kernel} ({Str(os, "OSArchitecture")})"
+                : $"Windows: {Str(os, "Caption")}, build {Str(os, "BuildNumber")} ({Str(os, "OSArchitecture")})");
         foreach (var c in Rows(r, "computer"))
             b.AppendLine($"{L.T("Computer", "Computer", "Dator", "Datamaskin", "Computer")}: {Str(c, "Manufacturer")} {Str(c, "Model")}".TrimEnd());
         foreach (var mb in Rows(r, "motherboard"))
@@ -68,6 +70,32 @@ public static class PlainReport
                 if (size <= 0) continue;
                 b.AppendLine($"  {Str(d, "DeviceID")} {size:0} GB, {free:0} GB {Free} ({100 * free / size:0} %)" + (free / size < 0.10 || free < 10 ? AlmostFull : ""));
             }
+        }
+
+        // Linux only: the hottest reading of each sensor, and the battery.
+        var temps = Rows(r, "temperatures").GroupBy(t => Str(t, "sensor")).Select(g => g.MaxBy(t => Num(t, "celsius") ?? 0)).ToList();
+        if (temps.Count > 0)
+        {
+            b.AppendLine(L.T("Temperaturer:", "Temperatures:", "Temperaturer:", "Temperaturer:", "Temperaturen:"));
+            foreach (var t in temps)
+            {
+                double c = Num(t, "celsius") ?? 0;
+                string mark = c >= 90 ? $"{Problem} " : c >= 80 ? $"{Notice} " : "";
+                string hot = c >= 90 ? "  " + L.T("(meget varm)", "(very hot)", "(mycket varm)", "(veldig varm)", "(sehr heiß)")
+                           : c >= 80 ? "  " + L.T("(varm)", "(hot)", "(varm)", "(varm)", "(heiß)") : "";
+                b.AppendLine($"  {mark}{Str(t, "sensor")}: {c:0} °C{hot}");
+            }
+        }
+        foreach (var bat in Rows(r, "battery"))
+        {
+            string line = L.T("Batteri", "Battery", "Batteri", "Batteri", "Akku") + $": {Num(bat, "charge_percent"):0} %";
+            if (Num(bat, "health_percent") is { } h)
+            {
+                line += ", " + L.T($"kan holde {h:0} % af det, det kunne som nyt", $"holds {h:0} % of what it did when new",
+                    $"rymmer {h:0} % av vad det gjorde som nytt", $"holder {h:0} % av det det gjorde som nytt", $"hält {h:0} % von dem, was er neu konnte");
+                if (h < 70) line = $"{Notice} {line}";
+            }
+            b.AppendLine(line);
         }
 
         var problems = Rows(r, "problem_devices").ToList();
@@ -170,9 +198,13 @@ public static class PlainReport
         var b = new StringBuilder();
         string n = $"{Num(r, "total_events"):0}", kinds = $"{Num(r, "total_groups") ?? groups.Count:0}";
         b.AppendLine(groups.Count == 0
-            ? L.T("Ingen fejl i Windows' hændelseslog i perioden. Fint.", "No errors in the Windows event log in this period. Good.",
-                  "Inga fel i Windows händelselogg under perioden. Bra.", "Ingen feil i Windows' hendelseslogg i perioden. Fint.",
-                  "Keine Fehler in der Windows-Ereignisanzeige in diesem Zeitraum. Gut.")
+            ? (OperatingSystem.IsLinux()
+                ? L.T("Ingen fejl i systemloggen i perioden. Fint.", "No errors in the system log in this period. Good.",
+                      "Inga fel i systemloggen under perioden. Bra.", "Ingen feil i systemloggen i perioden. Fint.",
+                      "Keine Fehler im Systemprotokoll in diesem Zeitraum. Gut.")
+                : L.T("Ingen fejl i Windows' hændelseslog i perioden. Fint.", "No errors in the Windows event log in this period. Good.",
+                      "Inga fel i Windows händelselogg under perioden. Bra.", "Ingen feil i Windows' hendelseslogg i perioden. Fint.",
+                      "Keine Fehler in der Windows-Ereignisanzeige in diesem Zeitraum. Gut."))
             : L.T($"{n} fejl i perioden, samlet i {kinds} slags (nyeste først):", $"{n} errors in this period, grouped into {kinds} kinds (newest first):",
                   $"{n} fel under perioden, samlade i {kinds} sorter (nyaste först):", $"{n} feil i perioden, samlet i {kinds} typer (nyeste først):",
                   $"{n} Fehler im Zeitraum, zusammengefasst in {kinds} Arten (neueste zuerst):"));
@@ -189,7 +221,7 @@ public static class PlainReport
             string when = DateTime.TryParse(Str(g, "last"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) ? t.ToString("dd-MM HH:mm", CultureInfo.InvariantCulture) : Str(g, "last");
             string count = Num(g, "count") is > 1 and var c ? $"  ×{c:0}" : "";
             string level = Str(g, "level") == "critical" ? L.T("KRITISK ", "CRITICAL ", "KRITISK ", "KRITISK ", "KRITISCH ") : "";
-            b.AppendLine($"{(level.Length > 0 ? Problem : Notice)} {when}  {level}{Str(g, "source")} ({Str(g, "event_id")}){count}");
+            b.AppendLine($"{(level.Length > 0 ? Problem : Notice)} {when}  {level}{Str(g, "source")}{(Str(g, "event_id") is "0" or "" ? "" : $" ({Str(g, "event_id")})")}{count}");
             if (Str(g, "meaning") is { Length: > 0 } meaning)
                 b.AppendLine($"   {meaning}");
             if (Str(g, "message") is { Length: > 0 } msg)
@@ -205,11 +237,11 @@ public static class PlainReport
     {
         var installs = Rows(r, "installs").ToList();
         if (installs.Count == 0)
-            return L.T("Fandt ingen Minecraft-installation med logfiler for denne Windows-bruger.",
-                "Found no Minecraft installation with log files for this Windows user.",
-                "Hittade ingen Minecraft-installation med loggfiler för den här Windows-användaren.",
-                "Fant ingen Minecraft-installasjon med loggfiler for denne Windows-brukeren.",
-                "Keine Minecraft-Installation mit Logdateien für diesen Windows-Benutzer gefunden.");
+            return L.T("Fandt ingen Minecraft-installation med logfiler for denne bruger.",
+                "Found no Minecraft installation with log files for this user.",
+                "Hittade ingen Minecraft-installation med loggfiler för den här användaren.",
+                "Fant ingen Minecraft-installasjon med loggfiler for denne brukeren.",
+                "Keine Minecraft-Installation mit Logdateien für diesen Benutzer gefunden.");
 
         var b = new StringBuilder();
         b.AppendLine(L.T("Minecraft-installationer (senest brugt først):", "Minecraft installations (most recently used first):",
@@ -454,11 +486,11 @@ public static class PlainReport
     {
         var games = Rows(r, "games").ToList();
         if (games.Count == 0)
-            return L.T("Fandt ingen logfiler fra Fortnite, Roblox, Rocket League eller andre Unreal- og Unity-spil for denne Windows-bruger.",
-                "Found no log files from Fortnite, Roblox, Rocket League or other Unreal and Unity games for this Windows user.",
-                "Hittade inga loggfiler från Fortnite, Roblox, Rocket League eller andra Unreal- och Unity-spel för den här Windows-användaren.",
-                "Fant ingen loggfiler fra Fortnite, Roblox, Rocket League eller andre Unreal- og Unity-spill for denne Windows-brukeren.",
-                "Keine Logdateien von Fortnite, Roblox, Rocket League oder anderen Unreal- und Unity-Spielen für diesen Windows-Benutzer gefunden.");
+            return L.T("Fandt ingen logfiler fra Fortnite, Roblox, Rocket League eller andre Unreal- og Unity-spil for denne bruger.",
+                "Found no log files from Fortnite, Roblox, Rocket League or other Unreal and Unity games for this user.",
+                "Hittade inga loggfiler från Fortnite, Roblox, Rocket League eller andra Unreal- och Unity-spel för den här användaren.",
+                "Fant ingen loggfiler fra Fortnite, Roblox, Rocket League eller andre Unreal- og Unity-spill for denne brukeren.",
+                "Keine Logdateien von Fortnite, Roblox, Rocket League oder anderen Unreal- und Unity-Spielen für diesen Benutzer gefunden.");
         var b = new StringBuilder();
         b.AppendLine(L.T("Spil med logfiler (senest spillet først):", "Games with log files (most recently played first):",
             "Spel med loggfiler (senast spelade först):", "Spill med loggfiler (sist spilt først):", "Spiele mit Logdateien (zuletzt gespielte zuerst):"));

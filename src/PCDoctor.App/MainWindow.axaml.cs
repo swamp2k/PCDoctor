@@ -34,6 +34,16 @@ public partial class MainWindow : Window
     readonly DispatcherTimer _gaugeTimer = new() { Interval = TimeSpan.FromSeconds(3) };
     bool _sampling;
 
+    /// <summary>
+    /// On a small screen such as the Steam Deck's (1280 × 800) the normal window does not fit with its title bar,
+    /// so it fills the screen instead.
+    /// </summary>
+    void FillSmallScreen()
+    {
+        if (Screens.ScreenFromWindow(this) is { } screen && screen.WorkingArea.Height / screen.Scaling < 860)
+            WindowState = WindowState.Maximized;
+    }
+
     public MainWindow()
     {
         L.Current = _settings.Language;
@@ -57,6 +67,7 @@ public partial class MainWindow : Window
         SettingsButton.Click += async (_, _) => await OpenSettingsAsync();
         UpdateButton.Click += async (_, _) => await new UpdateWindow().ShowDialog(this);
         Opened += async (_, _) => await CheckForUpdateAtStartupAsync();
+        Opened += (_, _) => FillSmallScreen();
         NewChatButton.Click += (_, _) => NewConversation();
         ChatNavButton.Click += (_, _) => ShowPage(ChatPage, ChatNavButton);
         RecordButton.Click += (_, _) => ShowPage(_recordingPage ??= NewRecordingPage(gameMode: false), RecordButton);

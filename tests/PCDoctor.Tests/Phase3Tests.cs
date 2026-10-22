@@ -203,7 +203,7 @@ public class IntegrationTests
         var first = h.Store.LoadApiCall(s.ApiCalls[0].Id)!;
         Assert.Contains("claude-haiku-5-5", first.Request);
         Assert.Contains("Hvorfor crasher Minecraft?", first.Request);
-        Assert.Contains("family's Windows PC", first.Request); // readable, not \u0027-escaped
+        Assert.Contains("a family's ", first.Request); // readable, not \u0027-escaped
         Assert.Contains("gaming_logs", first.Response);
         // Both are real JSON, so the History page can show them nicely formatted.
         Assert.Equal("claude-haiku-5-5", JsonDocument.Parse(first.Request).RootElement.GetProperty("model").GetString());

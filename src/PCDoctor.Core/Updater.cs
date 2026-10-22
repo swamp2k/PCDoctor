@@ -14,7 +14,10 @@ public sealed class Updater
 {
     public const string LatestReleaseUrl = "https://api.github.com/repos/swamp2k/PCDoctor/releases/latest";
     public const string DownloadPrefix = "https://github.com/swamp2k/PCDoctor/releases/download/";
-    const string ExeName = "PCDoctor.exe";
+    /// <summary>The file attached to each release for this system: the Windows exe, or the Linux (Steam Deck) program.</summary>
+    public static string AssetName => OperatingSystem.IsWindows() ? WindowsAsset : LinuxAsset;
+    public const string WindowsAsset = "PCDoctor.exe";
+    public const string LinuxAsset = "PCDoctor-linux-x64";
 
     readonly HttpClient _http;
 
@@ -67,8 +70,9 @@ public sealed class Updater
     }
 
     /// <summary>Picks the exe out of a GitHub release answer. Null if it is not newer, or the link is not ours.</summary>
-    public static UpdateInfo? ParseRelease(string json, Version current)
+    public static UpdateInfo? ParseRelease(string json, Version current, string? assetName = null)
     {
+        assetName ??= AssetName;
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         if (!root.TryGetProperty("tag_name", out var tag) || !TryParseVersion(tag.GetString(), out var latest)) return null;
@@ -76,7 +80,7 @@ public sealed class Updater
         if (!root.TryGetProperty("assets", out var assets)) return null;
         foreach (var asset in assets.EnumerateArray())
         {
-            if (asset.GetProperty("name").GetString() != ExeName) continue;
+            if (asset.GetProperty("name").GetString() != assetName) continue;
             string? url = asset.GetProperty("browser_download_url").GetString();
             if (url is not null && url.StartsWith(DownloadPrefix, StringComparison.Ordinal))
                 return new UpdateInfo(latest, url);
@@ -120,13 +124,16 @@ public sealed class Updater
     }
 
     /// <summary>
-    /// Swaps the files: the running exe is renamed to PCDoctor.exe.old (Windows allows that while it runs)
+    /// Swaps the files: the running exe is renamed to PCDoctor.exe.old (Windows and Linux both allow that while it runs)
     /// and the new one takes its place. The caller then starts the new exe and closes the old one.
     /// </summary>
     public static void Install(string exePath, string downloadedPath)
     {
         string old = exePath + ".old";
         TryDelete(old);
+        // On Linux a downloaded file may not be started until it is marked as a program; copy the old file's marks.
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(downloadedPath, File.GetUnixFileMode(exePath) | UnixFileMode.UserExecute);
         File.Move(exePath, old);
         try { File.Move(downloadedPath, exePath); }
         catch { File.Move(old, exePath); throw; } // could not put the new one in place: go back to the old
@@ -136,10 +143,16 @@ public sealed class Updater
     /// True when the app runs as its own exe and can replace itself. The file may have any name
     /// ("PCDoctor (1).exe" after a second download); only a developer run through dotnet is excluded.
     /// </summary>
-    public static bool CanSelfUpdate(string? exePath) =>
-        exePath is not null
-        && exePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-        && !exePath.Replace('\\', '/').EndsWith("/dotnet.exe", StringComparison.OrdinalIgnoreCase);
+    public static bool CanSelfUpdate(string? exePath) => CanSelfUpdate(exePath, OperatingSystem.IsWindows());
+
+    /// <param name="windows">On Windows the program must be an .exe; on Linux the file has no extension.</param>
+    public static bool CanSelfUpdate(string? exePath, bool windows)
+    {
+        if (exePath is null) return false;
+        string name = exePath.Replace('\\', '/').Split('/')[^1];
+        if (name.Equals("dotnet", StringComparison.OrdinalIgnoreCase) || name.Equals("dotnet.exe", StringComparison.OrdinalIgnoreCase)) return false;
+        return windows ? name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) : !name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>Called at startup: removes the leftovers of an earlier update.</summary>
     public static void CleanUp(string exePath)

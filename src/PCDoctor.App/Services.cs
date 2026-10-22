@@ -1,12 +1,13 @@
 using System.Text.Json;
 using PCDoctor.Core;
 using PCDoctor.Diagnostics;
+using PCDoctor.Platform.Linux;
 using PCDoctor.Platform.Windows;
 using PCDoctor.Storage;
 
 namespace PCDoctor.App;
 
-/// <summary>Wires the platform-specific pieces together. The only place that knows about Windows.</summary>
+/// <summary>Wires the platform-specific pieces together. The only place that picks Windows or Linux parts.</summary>
 static class Services
 {
     public static List<ITool> CreateTools(AgentSettings settings, LogReviewSelection logReview)
@@ -14,10 +15,14 @@ static class Services
         var tools = new List<ITool>();
         if (OperatingSystem.IsWindows())
             tools.Add(new HardwareTool());
+        else if (OperatingSystem.IsLinux())
+            tools.Add(new LinuxHardwareTool());
         tools.Add(new ResourcesTool(CreatePerfSampler));
         tools.Add(new ProcessesTool());
         if (OperatingSystem.IsWindows())
             tools.Add(new EventLogTool());
+        else if (OperatingSystem.IsLinux())
+            tools.Add(new JournalTool());
         tools.Add(new PingTool());
         tools.Add(new DnsTool());
         tools.Add(new TcpTool());
@@ -30,12 +35,16 @@ static class Services
         tools.Add(new ReviewLogTool(logReview));
         if (OperatingSystem.IsWindows())
             tools.Add(new PowerShellTool(settings));
+        else if (OperatingSystem.IsLinux())
+            tools.Add(new BashTool(settings));
         return tools;
     }
 
-    /// <summary>Performance recording reads Windows counters; there is no sampler elsewhere.</summary>
+    /// <summary>Performance recording reads Windows counters, or /proc and /sys on Linux. Other systems have no sampler.</summary>
     public static IPerfSampler? CreatePerfSampler() =>
-        OperatingSystem.IsWindows() ? new WindowsPerfSampler() : null;
+        OperatingSystem.IsWindows() ? new WindowsPerfSampler()
+        : OperatingSystem.IsLinux() ? new LinuxPerfSampler()
+        : null;
 
     /// <summary>
     /// Starts FPS measuring for a game (Windows asks for administrator rights). Returns how to stop it and get the result,
@@ -50,7 +59,9 @@ static class Services
     }
 
     public static ISecretStore CreateSecretStore() =>
-        OperatingSystem.IsWindows() ? new CredentialManagerStore() : new EnvironmentSecretStore();
+        OperatingSystem.IsWindows() ? new CredentialManagerStore()
+        : OperatingSystem.IsLinux() ? new FileSecretStore()
+        : new EnvironmentSecretStore();
 
     /// <summary>Opens the conversation history and keeps the newest 100 conversations. Null if it cannot be opened.</summary>
     public static SessionStore? OpenHistory()
@@ -82,7 +93,7 @@ static class Services
         File.WriteAllText(SettingsFile, JsonSerializer.Serialize(s, new JsonSerializerOptions { WriteIndented = true }));
 }
 
-/// <summary>Development fallback off Windows: reads ANTHROPIC_API_KEY, keeps writes in memory only.</summary>
+/// <summary>Development fallback on other systems: reads ANTHROPIC_API_KEY, keeps writes in memory only.</summary>
 sealed class EnvironmentSecretStore : ISecretStore
 {
     string? _value = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");

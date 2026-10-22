@@ -55,3 +55,13 @@ sealed class WindowsFactAttribute : FactAttribute
             Skip = "Windows only";
     }
 }
+
+/// <summary>Runs only on Linux; skipped elsewhere (e.g. in the Windows build).</summary>
+sealed class LinuxFactAttribute : FactAttribute
+{
+    public LinuxFactAttribute()
+    {
+        if (!OperatingSystem.IsLinux())
+            Skip = "Linux only";
+    }
+}

@@ -65,7 +65,7 @@ public sealed class UpdateWindow : Window
             $"Det finns en ny version av PC Doctor.\n\nDu har: {Updater.CurrentVersion}\nNy: {update.Version}\n\nDen hämtas från projektets egen GitHub-sida och appen startar om efteråt.",
             $"Det finnes en ny versjon av PC Doctor.\n\nDu har: {Updater.CurrentVersion}\nNy: {update.Version}\n\nDen lastes ned fra prosjektets egen GitHub-side, og appen starter på nytt etterpå.",
             $"Es gibt eine neue Version von PC Doctor.\n\nDu hast: {Updater.CurrentVersion}\nNeu: {update.Version}\n\nSie wird von der GitHub-Seite des Projekts geladen, danach startet die App neu.");
-        _install.IsVisible = _exePath is not null && Path.GetFileName(_exePath).Equals("PCDoctor.exe", StringComparison.OrdinalIgnoreCase);
+        _install.IsVisible = Updater.CanSelfUpdate(_exePath);
     }
 
     async Task InstallAsync()

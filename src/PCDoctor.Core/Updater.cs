@@ -132,6 +132,15 @@ public sealed class Updater
         catch { File.Move(old, exePath); throw; } // could not put the new one in place: go back to the old
     }
 
+    /// <summary>
+    /// True when the app runs as its own exe and can replace itself. The file may have any name
+    /// ("PCDoctor (1).exe" after a second download); only a developer run through dotnet is excluded.
+    /// </summary>
+    public static bool CanSelfUpdate(string? exePath) =>
+        exePath is not null
+        && exePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+        && !exePath.Replace('\\', '/').EndsWith("/dotnet.exe", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Called at startup: removes the leftovers of an earlier update.</summary>
     public static void CleanUp(string exePath)
     {

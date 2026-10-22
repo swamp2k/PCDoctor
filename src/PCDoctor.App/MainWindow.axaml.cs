@@ -357,7 +357,7 @@ public partial class MainWindow : Window
     /// <summary>Quietly looks for a newer version when the app starts; a window only appears if there is one.</summary>
     async Task CheckForUpdateAtStartupAsync()
     {
-        if (Environment.ProcessPath is not { } exe || !Path.GetFileName(exe).Equals("PCDoctor.exe", StringComparison.OrdinalIgnoreCase))
+        if (Environment.ProcessPath is not { } exe || !Updater.CanSelfUpdate(exe))
             return; // running from a developer tool, not the real exe
         Updater.CleanUp(exe);
         var found = await new Updater().CheckAsync(Updater.CurrentVersion);

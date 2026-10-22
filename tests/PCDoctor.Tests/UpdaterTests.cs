@@ -49,4 +49,12 @@ public class UpdaterTests
         Updater.CleanUp(exe);
         Assert.False(File.Exists(exe + ".old"));
     }
+
+    [Theory]
+    [InlineData(@"C:\Users\m\Downloads\PCDoctor.exe", true)]
+    [InlineData(@"C:\Users\m\Downloads\PCDoctor (1).exe", true)]
+    [InlineData(@"C:\Program Files\dotnet\dotnet.exe", false)]
+    [InlineData("/usr/bin/dotnet", false)]
+    public void Self_update_works_whatever_the_exe_is_called(string path, bool expected) =>
+        Assert.Equal(expected, Updater.CanSelfUpdate(path));
 }

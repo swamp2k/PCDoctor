@@ -46,10 +46,10 @@
                             <TextBlock Text="{app:Tr Diagnostik, Diagnostics, Diagnostik, Diagnostikk, Diagnose}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="StutterButton" Classes="nav" ToolTip.Tip="{app:Tr Hvorfor hakker mit spil?, Why does my game stutter?, Varför hackar mitt spel?, Hvorfor hakker spillet mitt?, Warum ruckelt mein Spiel?}">
+                    <Button x:Name="StutterButton" Classes="nav" ToolTip.Tip="{app:Tr Se hvad computeren bruger kræfterne på lige nu, See what the PC is busy with right now, Se vad datorn arbetar med just nu, Se hva PC-en jobber med akkurat nå, Sehen was der PC gerade tut}">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <app:Icon Data="M6 7h12a4 4 0 0 1 4 4v3a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4v-3a4 4 0 0 1 4-4z M7 11v3 M5.5 12.5h3 M15.5 12h.01 M18 14h.01"/>
-                            <TextBlock Text="{app:Tr Spillet hakker, Game stutters, Spelet hackar, Spillet hakker, Spiel ruckelt}"/>
+                            <TextBlock Text="{app:Tr Live View, Live View, Live View, Live View, Live View}"/>
                         </StackPanel>
                     </Button>
                     <Button x:Name="RecordButton" Classes="nav" ToolTip.Tip="{app:Tr 'Optag CPU, grafikkort, RAM og disk, mens du bruger PC’en', 'Record CPU, graphics card, RAM and disk while you use the PC', 'Spela in CPU, grafikkort, RAM och disk medan du använder datorn', 'Ta opp CPU, skjermkort, RAM og disk mens du bruker PC-en', 'CPU, Grafikkarte, RAM und Festplatte aufzeichnen, während du den PC benutzt'}">

@@ -16,8 +16,34 @@ public partial class RecordingPage : UserControl
     readonly bool _gameMode;
 
     /// <summary>First entry of the game list: a normal recording that follows no particular game.</summary>
-    static RunningProgram WholePc => new("", L.T("Hele computeren (intet bestemt spil)", "Whole computer (no specific game)",
-        "Hela datorn (inget särskilt spel)", "Hele PC-en (ikke noe bestemt spill)", "Ganzer PC (kein bestimmtes Spiel)"), false);
+    static RunningProgram WholePc => new("", L.T("Hele computeren (intet bestemt program)", "Whole computer (no specific program)",
+        "Hela datorn (inget särskilt program)", "Hele PC-en (ikke noe bestemt program)", "Ganzer PC (kein bestimmtes Programm)"), false);
+
+    readonly ActivePrograms _programs = new();
+    bool _programsBusy;
+
+    /// <summary>Live View: the list of running programs, updated every 2 seconds while the page is on screen.</summary>
+    void StartProgramList()
+    {
+        ProgramsCard.IsVisible = true;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        timer.Tick += async (_, _) =>
+        {
+            if (_programsBusy || !IsVisible || TopLevel.GetTopLevel(this) is null)
+                return;
+            _programsBusy = true;
+            try
+            {
+                var list = await Task.Run(() => _programs.Sample());
+                ProgramsList.ItemsSource = list.Take(40).Select(p => new ProgramRow(
+                    p.Processes > 1 ? $"{p.Name} ({p.Processes})" : p.Name, $"{p.CpuPercent:0.0} %",
+                    p.RamMb >= 1024 ? $"{p.RamMb / 1024:0.0} GB" : $"{p.RamMb:0} MB")).ToList();
+            }
+            catch (Exception) { /* the list is only for looking at */ }
+            finally { _programsBusy = false; }
+        };
+        timer.Start();
+    }
 
     CancellationTokenSource? _stop;
     Task? _recording;
@@ -51,6 +77,7 @@ public partial class RecordingPage : UserControl
             RaceButton.Click += (_, _) => ShowRace(true);
             GraphsButton.Click += (_, _) => ShowRace(false);
             ShowNetwork(null);
+            StartProgramList();
         }
         else
             Race.IsVisible = false;
@@ -130,14 +157,14 @@ public partial class RecordingPage : UserControl
     void ShowTitle()
     {
         TitleText.Text = _gameMode
-            ? L.T("Hvorfor hakker mit spil?", "Why does my game stutter?", "Varför hackar mitt spel?", "Hvorfor hakker spillet mitt?", "Warum ruckelt mein Spiel?")
+            ? "Live View"
             : L.T("Optag ydelse", "Record performance", "Spela in prestanda", "Ta opp ytelse", "Leistung aufzeichnen");
         IntroText.Text = _gameMode
-            ? L.T("Start spillet og vælg det her. Tryk Start, og spil til det hakker. Kom tilbage og tryk Stop for at se resultatet. Vil du have det forklaret, så tryk Spørg PC Doctor.",
-                  "Start the game and pick it here. Press Start and play until it stutters. Come back and press Stop to see the result. Press Ask PC Doctor if you want it explained.",
-                  "Starta spelet och välj det här. Tryck Starta och spela tills det hackar. Kom tillbaka och tryck Stopp för att se resultatet. Vill du ha det förklarat, tryck Fråga PC Doctor.",
-                  "Start spillet og velg det her. Trykk Start, og spill til det hakker. Kom tilbake og trykk Stopp for å se resultatet. Vil du ha det forklart, trykk Spør PC Doctor.",
-                  "Starte das Spiel und wähle es hier aus. Drücke Start und spiele, bis es ruckelt. Komm zurück und drücke Stopp, um das Ergebnis zu sehen. Möchtest du es erklärt haben, drücke PC Doctor fragen.")
+            ? L.T("Her kan du se, hvad PC'en bruger kræfterne på lige nu, og hvilke programmer der kører. Vil du optage, så tryk Start (vælg gerne et program, fx et spil, for at følge det), og tryk Stop bagefter.",
+                  "See what the PC is spending its power on right now, and which programs are running. To record, press Start (you can pick a program, such as a game, to follow it) and press Stop afterwards.",
+                  "Här ser du vad datorn lägger kraften på just nu och vilka program som körs. Vill du spela in, tryck Starta (välj gärna ett program, t.ex. ett spel, att följa) och tryck Stopp efteråt.",
+                  "Her ser du hva PC-en bruker kreftene på akkurat nå, og hvilke programmer som kjører. Vil du ta opp, trykk Start (velg gjerne et program, f.eks. et spill, å følge) og trykk Stopp etterpå.",
+                  "Hier siehst du, wofür der PC gerade seine Leistung verwendet und welche Programme laufen. Zum Aufzeichnen drücke Start (wähle gern ein Programm, z. B. ein Spiel, zum Verfolgen) und danach Stopp.")
             : L.T("Tryk Start, brug PC'en som normalt, og tryk Stop. Stopper selv efter 15 minutter.",
                   "Press Start, use the PC as usual, and press Stop. Stops by itself after 15 minutes.",
                   "Tryck Starta, använd datorn som vanligt och tryck Stopp. Stannar av sig själv efter 15 minuter.",
@@ -162,13 +189,11 @@ public partial class RecordingPage : UserControl
     void RefreshGames()
     {
         var previous = SelectedGame?.ProcessName;
-        bool wholePc = GameBox.SelectedItem is RunningProgram { ProcessName.Length: 0 };
         var list = new List<RunningProgram> { WholePc };
         try { list.AddRange(RunningGames.List()); } catch (Exception) { /* the list is a convenience; whole-PC recording still works */ }
         GameBox.ItemsSource = list;
-        // Keep the choice; otherwise in game mode pick the first known game that is running.
+        // Keep the choice; otherwise the whole computer.
         GameBox.SelectedItem = list.FirstOrDefault(g => g.ProcessName == previous && previous is not null)
-                               ?? (_gameMode && !wholePc ? list.FirstOrDefault(g => g.KnownGame) : null)
                                ?? list[0];
     }
 
@@ -178,15 +203,6 @@ public partial class RecordingPage : UserControl
             return;
 
         var game = SelectedGame;
-        if (_gameMode && game is null)
-        {
-            ElapsedText.Text = L.T("Vælg spillet først. Start det, og tryk på knappen ved siden af listen for at opdatere den.",
-                "Pick the game first. Start it, and press the button next to the list to refresh it.",
-                "Välj spelet först. Starta det och tryck på knappen bredvid listan för att uppdatera den.",
-                "Velg spillet først. Start det, og trykk på knappen ved siden av listen for å oppdatere den.",
-                "Wähle zuerst das Spiel. Starte es und drücke die Schaltfläche neben der Liste, um sie zu aktualisieren.");
-            return;
-        }
         _sampler.Game = game?.ProcessName;
 
         // FPS needs administrator rights, so it runs in a separate helper Windows asks permission for.
@@ -499,3 +515,6 @@ public partial class RecordingPage : UserControl
                 : Id;
     }
 }
+
+/// <summary>One line in the Live View program list.</summary>
+public sealed record ProgramRow(string Name, string Cpu, string Ram);

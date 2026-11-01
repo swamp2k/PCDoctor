@@ -8,7 +8,7 @@
 - Two old pull requests are still open and both clash with today's code (GitHub reports merge conflicts):
   - #2 "Language picker with flags; Danish by default" (2026-10-13). Most likely replaced by the later #10, which made the whole app switch language with the flag. Probably safe to close.
   - #7 "Andre spil: ask about one game instead of all logs" (2026-10-14). Not in `main` (the `game` option it adds does not exist there). Uncertain whether the later "Recent games" page (#16, #17) already covers the same need.
-- 17 old `claude/...` branches remain on GitHub from merged or abandoned work.
+- 18 old `claude/...` branches remain on GitHub from merged or abandoned work.
 
 **Next step:** Owner decides what to do with PR #2 and #7 (close, or redo #7 on top of today's code). After that, pick the next feature.
 

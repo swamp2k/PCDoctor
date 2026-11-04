@@ -8,10 +8,8 @@
 - Old PRs #2 (language picker) and #7 (one-game logs) were closed unmerged on 2026-11-01. #7's idea is not in the app.
 - Old `claude/...` branches are still on GitHub: deleting branches from an AI session is blocked, so they must be removed by the owner on GitHub. 14 are fully merged and 2 belong to the closed PRs #2 and #7; all 16 are safe to delete. 3 hold unmerged commits (1obyp8, 2c6yfj, xtdyv6); they look like older versions of work that was later merged under other commits, but that is uncertain.
 
-**Next step:** Owner picks the next feature (or asks to redo the "one game at a time" idea from #7 on today's code).
+**Next step:** Done
 
 **Blocked by:** Nothing.
 
-**Updated:** 2026-11-01
-Next step: Done
-Updated: 2026-11-04
+**Updated:** 2026-11-04

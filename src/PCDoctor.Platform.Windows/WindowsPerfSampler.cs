@@ -23,6 +23,7 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
     readonly PerformanceCounterCategory? _gpuMemory = TryCategory("GPU Adapter Memory");
     readonly PerformanceCounterCategory? _net = TryCategory("Network Interface");
     long _netBytes = -1, _netTicks;
+    readonly GpuHealthReader _gpuHealth = new();
     readonly Ping _ping = new();
     static readonly IPAddress PingTarget = IPAddress.Parse("1.1.1.1");
     Task<PingReply>? _pingTask;
@@ -44,8 +45,10 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
         double cpu = _cpu is null ? allCpu : Clamp(_cpu.NextValue());
         var (gpu, topGpu, gameGpu) = Gpu();
         var (pingMs, pingLost) = PingResult();
+        var health = _gpuHealth.Latest;
         return new PerfSample(0, Math.Round(cpu, 1), gpu, ramPct, ramUsedGb, disk is null ? null : Math.Round(disk.Value, 1), topName, topCpu,
-            CpuSpeed(), GpuMemoryGb(), topGpu, pingMs, pingLost, gameCpu, gameGpu, gameRam, NetworkMbps());
+            CpuSpeed(), GpuMemoryGb(), topGpu, pingMs, pingLost, gameCpu, gameGpu, gameRam, NetworkMbps(),
+            health?.TempC, health?.PowerW, health?.ClockMhz, health?.Throttle, health?.QueryMs);
     }
 
     /// <summary>Traffic in and out over all network adapters since the last reading, in megabits per second.</summary>
@@ -233,6 +236,7 @@ public sealed class WindowsPerfSampler : IPerfSampler, IDisposable
         _cpu?.Dispose();
         _cpuSpeed?.Dispose();
         _diskIdle?.Dispose();
+        _gpuHealth.Dispose();
         _ping.Dispose();
     }
 

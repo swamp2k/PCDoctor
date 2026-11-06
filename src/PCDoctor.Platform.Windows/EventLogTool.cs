@@ -25,6 +25,9 @@ public sealed partial class EventLogTool : ITool
     public string Description =>
         "Read errors and critical events from the Windows Event Log (System and Application), grouped so repeats are counted once, " +
         "with a plain explanation for well-known ones (unexpected restarts, blue screens, program crashes, graphics driver resets, disk errors). " +
+        "It also ALWAYS includes graphics-driver, hardware-error (WHEA) and Windows 'live kernel dump' entries at any level (hardware_fault = true), " +
+        "because a graphics card hang (screen flashes black or turns off, everything stutters, CPU and RAM look normal) often leaves only information-level traces: " +
+        "'LiveKernelEvent code 141' and 'Component WATCHDOG requested a live kernel dump'. The WATCHDOG entry's time is when the hang started. " +
         "Default: errors from the last 48 hours. Use 'around' with a time (for example a crash time from gaming_logs) to see what happened just before and after.";
     public ToolKind Kind => ToolKind.ReadOnly;
     public JsonObject InputSchema => new()
@@ -98,13 +101,22 @@ public sealed partial class EventLogTool : ITool
             }
         }
 
+        // A graphics card or driver hang leaves only information-level traces, so these are read at every level.
+        if (provider is null)
+        {
+            var (extra, extraProblems) = HardwareFaultReader.Read(from, to, ct);
+            var have = events.Select(e => (e.Log, e.Provider, e.Id, e.Time)).ToHashSet();
+            events.AddRange(extra.Where(e => !have.Contains((e.Log, e.Provider, e.Id, e.Time))));
+            problems.AddRange(extraProblems);
+        }
+
         var allGroups = EventSummary.Group(events);
         var groups = allGroups.Take(maxGroups).ToList();
         return ToolResult.Json(new
         {
-            from = from.ToString("yyyy-MM-ddTHH:mm:ss"),
-            to = to.ToString("yyyy-MM-ddTHH:mm:ss"),
-            levels = warnings ? "critical, error, warning" : "critical, error",
+            from = from.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            to = to.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            levels = (warnings ? "critical, error, warning" : "critical, error") + " (plus graphics-driver, hardware and live-dump entries at any level)",
             total_events = events.Count,
             total_groups = allGroups.Count,
             groups_left_out = allGroups.Count - groups.Count,
@@ -115,9 +127,10 @@ public sealed partial class EventLogTool : ITool
                 source = g.Provider,
                 event_id = g.Id,
                 count = g.Count,
-                first = g.First.ToString("yyyy-MM-ddTHH:mm:ss"),
-                last = g.Last.ToString("yyyy-MM-ddTHH:mm:ss"),
+                first = g.First.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+                last = g.Last.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
                 meaning = g.Meaning,
+                hardware_fault = g.HardwareFault ? true : (bool?)null,
                 message = g.Message,
             }),
             stopped_early_in = truncatedLogs.Count > 0 ? truncatedLogs : null,
@@ -152,7 +165,7 @@ public sealed partial class EventLogTool : ITool
         return false;
     }
 
-    static string? Message(EventRecord r)
+    internal static string? Message(EventRecord r)
     {
         try
         {
@@ -165,7 +178,7 @@ public sealed partial class EventLogTool : ITool
         return r.Properties.Count == 0 ? null : string.Join(" | ", r.Properties.Select(p => p.Value?.ToString()).Take(12));
     }
 
-    static string LevelName(byte? level) => level switch
+    internal static string LevelName(byte? level) => level switch
     {
         1 => "critical",
         2 => "error",

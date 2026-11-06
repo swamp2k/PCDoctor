@@ -42,7 +42,12 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
         {
             id = r.Id,
             started = r.Started,
-            stopped_by = r.StopReason == "limit" ? "15-minute limit" : "user",
+            stopped_by = r.StopReason switch
+            {
+                "limit" => "15-minute limit",
+                "interrupted" => "NOT the user: the PC or PC Doctor stopped during the recording (crash, freeze, restart or power loss). The recording ends where it was cut off, so look at what happened in its last seconds and check system_events around that time.",
+                _ => "user",
+            },
             game = r.Game,
             game_process = r.GameProcess,
             fps = r.Fps is null ? null : r.Fps with { PerSecond = null },
@@ -55,11 +60,16 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
                    "CpuSpeed is % of the processor's normal speed: over 100 is boosting; SlowedPercentOfBusyTime high means the processor was slowed " +
                    "while busy (overheating, laptop on battery, or power-saving plan). MaxGpuMemoryGb near the card's VRAM size means it ran out of " +
                    "graphics memory (compare with system_hardware). Ping: Spikes are pings over 150 ms (felt as lag); if LostPercent is 100 the network " +
-                   "may just block ping. Fields are null in recordings made before these measurements existed. " +
+                   "may just block ping. Fields are null (or left out of the timeline slices) when they were not measured, e.g. in recordings made before these measurements existed. " +
                    "Game recordings (\"Hvorfor hakker mit spil?\") also have game: GameCpu/GameGpu/MaxGameRamGb are the game's own use " +
                    "(GameCpu is % of the whole machine, so one busy core on an 8-core CPU is about 12 %); fps has average, best and worst second, " +
                    "1 % and 0.1 % lows (far below the average = stutter) and Stutters (visible hitches); the timeline has fps per slice, " +
-                   "so you can see what CPU, GPU, disk, RAM or ping did when the FPS dropped. fps.Measured=false gives the reason.",
+                   "so you can see what CPU, GPU, disk, RAM or ping did when the FPS dropped. fps.Measured=false gives the reason. " +
+                   "GpuHealth (NVIDIA cards only) has the temperature, power draw, core clock and the limits holding the card back: " +
+                   "MinClockMhzWhileBusy far below MaxClockMhz means the card slowed down while working (power, heat or a driver problem); " +
+                   "ThrottleReasons lists active limits (power_cap, hardware_slowdown, *_thermal_slowdown, power_brake); " +
+                   "SlowestReplyMs in the seconds means the graphics driver itself was stalling, which goes with a graphics card hang " +
+                   "(screen blanks, everything stutters, CPU and RAM normal). If so, check system_events: it lists those hangs.",
         }));
     }
 
@@ -70,8 +80,10 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
         if (s.Count == 0)
             return Array.Empty<object>();
         int per = (int)Math.Ceiling(s.Count / (double)MaxSlices);
-        return s.Chunk(per).Select(c => new
+        return s.Chunk(per).Select(c =>
         {
+            var slice = JsonSerializer.SerializeToNode(new
+            {
             from_s = c[0].Seconds,
             to_s = c[^1].Seconds,
             cpu_avg = Avg(c.Select(x => (double?)x.Cpu)),
@@ -89,6 +101,20 @@ public sealed class PerformanceRecordingTool(PerfRecordingStore store) : ITool
             fps_avg = Fps(r, c[0].Seconds, c[^1].Seconds, min: false),
             fps_min = Fps(r, c[0].Seconds, c[^1].Seconds, min: true),
             top_process = c.Where(x => x.TopProcess is not null).GroupBy(x => x.TopProcess).OrderByDescending(g => g.Count()).FirstOrDefault()?.Key,
+            })!.AsObject();
+
+            // Leave out what was not measured (no game, no FPS, no GPU reading ...): the model's input is limited, and a missing
+            // value says the same as null. Graphics card health is added only where it exists, for the same reason.
+            foreach (string empty in slice.Where(p => p.Value is null).Select(p => p.Key).ToList())
+                slice.Remove(empty);
+            void Add(string name, double? value) { if (value is not null) slice[name] = value; }
+            Add("gpu_temp_max", Max(c.Select(x => x.GpuTempC)));
+            Add("gpu_power_max", Max(c.Select(x => x.GpuPowerW)));
+            Add("gpu_clock_min", Min(c.Select(x => x.GpuClockMhz)));
+            Add("gpu_reply_ms_max", Max(c.Select(x => (double?)x.GpuQueryMs)));
+            if (c.Select(x => x.GpuThrottle).FirstOrDefault(x => !string.IsNullOrEmpty(x)) is { } limit)
+                slice["gpu_limit"] = limit;
+            return slice;
         }).ToList();
     }
 

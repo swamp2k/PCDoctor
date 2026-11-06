@@ -83,6 +83,19 @@ About once a second it notes CPU, graphics card, RAM and disk use, the busiest p
 graphics memory and a ping to the internet to catch lag spikes. The screen is not recorded.
 Afterwards you see a chart and a summary, and can ask PC Doctor what held the PC back. The newest 20 recordings are kept.
 
+With an NVIDIA graphics card it also notes the card's temperature, power, clock speed, what is holding it back (power or heat limits)
+and how long the graphics driver takes to answer; a driver that answers in seconds is a sign the card is struggling.
+
+Every measurement is also saved to disk as it is taken. If the PC freezes, crashes or restarts in the middle of a recording,
+the recording is rebuilt the next time PC Doctor starts and is marked as cut short, so you do not lose the very moments you wanted.
+
+### Graphics card hangs
+
+Sometimes the graphics card (or its driver) stops responding: everything stutters, a monitor flashes black or turns off,
+yet the processor and RAM look perfectly normal. Windows leaves only quiet "information" entries about it, which a normal
+error search never shows. PC Doctor looks for them at every level, explains them in plain words (**Diagnostics → Events** and the
+`system_events` tool), and when it starts it tells you if Windows logged such a hang since last time, with an **Investigate** button.
+
 On Windows you can also measure FPS (frames per second). Windows only allows this with administrator rights, so it asks
 "Do you want to allow this app to make changes?". Only a small, windowless helper that counts frames runs as administrator;
 the main window never does. If you say no, everything else is still recorded.
@@ -110,7 +123,7 @@ before anything is saved. The newest 100 conversations are kept, and you can del
 | `system_hardware` | CPU, graphics cards and drivers, RAM, Windows version, disks, motherboard, devices with driver problems (WMI, no shell) |
 | `system_resources` | How busy the PC is right now: CPU, GPU, RAM, disk activity, free space per drive, time since restart |
 | `system_processes` | Top programs by CPU and memory, measured over one second |
-| `system_events` | Errors from the Windows Event Log, grouped and explained (unexpected restarts, blue screens, crashes, driver resets, disk errors); can look around a given time |
+| `system_events` | Errors from the Windows Event Log, grouped and explained (unexpected restarts, blue screens, crashes, driver resets, disk errors); can look around a given time. Always includes graphics card / hardware hangs (see below), even though Windows only logs those as information |
 | `network_ping` | Ping the router, 1.1.1.1 and 8.8.8.8, or named hosts |
 | `network_dns` | Resolve names and list the DNS servers in use |
 | `network_tcp` | Can we connect to host:port? |
@@ -119,7 +132,7 @@ before anything is saved. The newest 100 conversations are kept, and you can del
 | `other_game_logs` | Logs of Fortnite, Rocket League, Fall Guys and other Unreal Engine games, Roblox and Unity games, with warning signs (graphics driver crash, out of memory, anti-cheat, lost connection) |
 | `service_status` | Is Fortnite, Epic, Discord, Roblox, Minecraft, Steam or Xbox down? Reads the official status page where there is one (Epic, Discord) and tests whether this PC reaches the servers and a neutral site |
 | `game_requirements` | Can this PC run a game? Requirements built in for Minecraft, Fortnite and Roblox (copied from the publishers 2026-10-14), any other game from the Steam store; compares RAM and disk space |
-| `performance_recording` | Reads a recording made with Record performance: summary, timeline and top programs |
+| `performance_recording` | Reads a recording made with Record performance: summary, timeline, top programs and (NVIDIA cards) graphics card health |
 | `shell_execute` | Windows PowerShell (bash on Linux), governed by the mode above |
 
 ## Where things are saved

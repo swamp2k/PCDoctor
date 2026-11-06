@@ -16,7 +16,8 @@ public sealed record EventGroup(
     DateTimeOffset First,
     DateTimeOffset Last,
     string? Message,
-    string? Meaning);
+    string? Meaning,
+    bool HardwareFault = false);
 
 /// <summary>Turns hundreds of raw log entries into a short list the model and the user can read.</summary>
 public static partial class EventSummary
@@ -41,7 +42,8 @@ public static partial class EventSummary
                 return new EventGroup(
                     g.Key.Log, newest.Level, g.Key.Provider, g.Key.Id, g.Count(),
                     g.Min(e => e.Time), newest.Time,
-                    Cut(newest.Message), KnownEvents.Explain(g.Key.Provider, g.Key.Id));
+                    Cut(newest.Message), KnownEvents.Explain(g.Key.Provider, g.Key.Id, newest.Message),
+                    HardwareFaults.IsHardwareFault(g.Key.Provider, g.Key.Id, newest.Message));
             })
             .OrderByDescending(g => g.Last)
             .ToList();
@@ -98,6 +100,19 @@ public static class KnownEvents
         ["igfx"] = ["Intel-grafikdriveren rapporterede en fejl.", "The Intel graphics driver reported an error.", "Intel-grafikdrivrutinen rapporterade ett fel.", "Intel-skjermdriveren rapporterte en feil.", "Der Intel-Grafiktreiber hat einen Fehler gemeldet."],
         ["Service Control Manager"] = ["En Windows-tjeneste kunne ikke starte eller stoppede uventet.", "A Windows service could not start or stopped unexpectedly.", "En Windows-tjänst kunde inte starta eller stoppade oväntat.", "En Windows-tjeneste kunne ikke starte eller stoppet uventet.", "Ein Windows-Dienst konnte nicht starten oder wurde unerwartet beendet."],
     };
+
+    /// <summary>
+    /// Like <see cref="Explain(string,int)"/>, but also reads the message, because Windows Error Reporting uses one event id
+    /// (1001) for everything and only the text says whether it was a graphics card hang.
+    /// </summary>
+    public static string? Explain(string provider, int id, string? message)
+    {
+        if (provider == HardwareFaults.WerProvider && id == 1001 && HardwareFaults.ParseWer(message) is { } report)
+            return HardwareFaults.ExplainWer(report);
+        if (provider == HardwareFaults.WerKernelProvider && id == 1001)
+            return HardwareFaults.ExplainLiveDumpRequest();
+        return Explain(provider, id);
+    }
 
     /// <summary>The meaning in the language picked with the flag, or null for an event we do not know.</summary>
     public static string? Explain(string provider, int id) =>

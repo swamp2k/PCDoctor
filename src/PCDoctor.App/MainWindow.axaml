@@ -122,6 +122,20 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Shown at startup when Windows logged a graphics card / hardware hang, or a recording was cut short by a crash -->
+                <Border DockPanel.Dock="Top" x:Name="FaultBanner" Background="{StaticResource AmberSoftBrush}" CornerRadius="12" Padding="14,10" Margin="0,0,0,12" IsVisible="False">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <Button x:Name="FaultInvestigateButton" Classes="accent" Content="{app:Tr Undersøg, Investigate, Undersök, Undersøk, Untersuchen}"/>
+                            <Button x:Name="FaultDismissButton" Content="{app:Tr Skjul, Dismiss, Dölj, Skjul, Ausblenden}"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Ellipse Classes="dot" Fill="{StaticResource AmberBrush}"/>
+                            <TextBlock x:Name="FaultText" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
                 <!-- Input -->
                 <TextBlock DockPanel.Dock="Bottom" x:Name="StatusText" Classes="muted" FontSize="12" Margin="4,8,0,0"/>
                 <Border DockPanel.Dock="Bottom" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"

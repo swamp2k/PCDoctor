@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -16,6 +17,12 @@ public partial class MainWindow : Window
     readonly ObservableCollection<ChatItem> _chat = [];
     readonly ObservableCollection<ActivityItem> _activity = [];
     readonly AgentSettings _settings = Services.LoadSettings();
+
+    /// <summary>Recordings rebuilt at startup because the PC or PC Doctor stopped before Stop was pressed.</summary>
+    IReadOnlyList<string> _recovered = [];
+
+    /// <summary>Hardware / graphics card hangs Windows logged since the user last dismissed the notice.</summary>
+    List<FaultIncident> _faultIncidents = [];
     readonly ISecretStore _secrets = Services.CreateSecretStore();
     readonly List<ITool> _tools;
     readonly LogReviewSelection _logSelection = new();
@@ -48,6 +55,7 @@ public partial class MainWindow : Window
     {
         L.Current = _settings.Language;
         InitializeComponent();
+        _recovered = RecoverRecordings();
         _tools = Services.CreateTools(_settings, _logSelection);
         ChatList.ItemsSource = _chat;
         ActivityList.ItemsSource = _activity;
@@ -67,6 +75,13 @@ public partial class MainWindow : Window
         SettingsButton.Click += async (_, _) => await OpenSettingsAsync();
         UpdateButton.Click += async (_, _) => await new UpdateWindow().ShowDialog(this);
         Opened += async (_, _) => await CheckForUpdateAtStartupAsync();
+        Opened += async (_, _) => await CheckForFaultsAtStartupAsync();
+        FaultInvestigateButton.Click += (_, _) =>
+        {
+            if (Ask(BuildFaultQuestion(_faultIncidents)))
+                DismissFaults();
+        };
+        FaultDismissButton.Click += (_, _) => DismissFaults();
         Opened += (_, _) => FillSmallScreen();
         NewChatButton.Click += (_, _) => NewConversation();
         ChatNavButton.Click += (_, _) => ShowPage(ChatPage, ChatNavButton);
@@ -93,6 +108,8 @@ public partial class MainWindow : Window
         L.Changed += () =>
         {
             SetMode(_mode, log: false);
+            if (FaultBanner.IsVisible)
+                FaultText.Text = BuildFaultBanner(_faultIncidents);
             StatusText.Text = _running is null ? ReadyText : BusyText;
             for (int i = 0; i < _chat.Count; i++)
                 if (ChatItem.FromEvent(_chat[i].Event) is { } again)
@@ -363,6 +380,88 @@ public partial class MainWindow : Window
     {
         await new SettingsWindow(_settings, _secrets).ShowDialog(this);
         RefreshKeyState();
+    }
+
+    /// <summary>
+    /// Turns recordings left behind by a crash, freeze or restart into normal recordings.
+    /// A recording that was cut short is itself a sign that something went wrong with the PC.
+    /// </summary>
+    static IReadOnlyList<string> RecoverRecordings()
+    {
+        try { return new PerfRecordingStore().RecoverInterrupted(); }
+        catch (Exception) { return []; }
+    }
+
+    /// <summary>
+    /// When the app starts: if Windows logged a graphics card or hardware hang since the user was last told (or a recording
+    /// was cut short), show a notice with a button to investigate. Silent when there is nothing, or the log cannot be read.
+    /// </summary>
+    async Task CheckForFaultsAtStartupAsync()
+    {
+        var since = _settings.LastFaultSeen ?? DateTimeOffset.Now.AddHours(-48);
+        _faultIncidents = await Task.Run(() => Services.FindFaultIncidents(since));
+        if (_faultIncidents.Count == 0 && _recovered.Count == 0)
+            return;
+        FaultText.Text = BuildFaultBanner(_faultIncidents);
+        FaultBanner.IsVisible = true;
+    }
+
+    string BuildFaultBanner(List<FaultIncident> incidents)
+    {
+        var parts = new List<string>();
+        if (incidents.Count > 0)
+        {
+            int n = incidents.Count;
+            string when = incidents[^1].Start.ToString("dd-MM HH:mm", CultureInfo.InvariantCulture);
+            parts.Add(L.T($"Windows har logget {n} hardware- eller grafikdriver-hang siden sidst, senest {when}.",
+                $"Windows has logged {n} hardware or graphics driver hang(s) since last time, the latest at {when}.",
+                $"Windows har loggat {n} hårdvaru- eller grafikdrivrutinshängning(ar) sedan sist, senast {when}.",
+                $"Windows har logget {n} maskinvare- eller skjermdriver-henging(er) siden sist, siste {when}.",
+                $"Windows hat seit dem letzten Mal {n} Hardware- oder Grafiktreiber-Hänger protokolliert, zuletzt {when}."));
+        }
+        if (_recovered.Count > 0)
+            parts.Add(L.T("En optagelse blev afbrudt (PC'en eller PC Doctor stoppede) og er gemt.",
+                "A recording was cut short (the PC or PC Doctor stopped) and has been saved.",
+                "En inspelning avbröts (datorn eller PC Doctor stannade) och har sparats.",
+                "Et opptak ble avbrutt (PC-en eller PC Doctor stoppet) og er lagret.",
+                "Eine Aufzeichnung wurde abgebrochen (der PC oder PC Doctor hat aufgehört) und gespeichert."));
+        return string.Join(" ", parts);
+    }
+
+    /// <summary>The question sent to PC Doctor when the user clicks Investigate on the startup notice.</summary>
+    string BuildFaultQuestion(List<FaultIncident> incidents)
+    {
+        string recorded = _recovered.Count == 0 ? "" : " " + L.T(
+            "En ydelsesoptagelse blev også afbrudt og er gemt: den slutter dér, hvor PC'en eller PC Doctor stoppede (performance_recording).",
+            "A performance recording was also cut short and saved: it ends where the PC or PC Doctor stopped (performance_recording).",
+            "En prestandainspelning avbröts också och har sparats: den slutar där datorn eller PC Doctor stannade (performance_recording).",
+            "Et ytelsesopptak ble også avbrutt og er lagret: det slutter der PC-en eller PC Doctor stoppet (performance_recording).",
+            "Eine Leistungsaufzeichnung wurde ebenfalls abgebrochen und gespeichert: sie endet dort, wo der PC oder PC Doctor aufgehört hat (performance_recording).");
+        if (incidents.Count == 0)
+            return L.T("En ydelsesoptagelse blev afbrudt, fordi PC'en eller PC Doctor stoppede. Se den med performance_recording, og tjek system_events omkring det tidspunkt, den slutter. Hvad skete der, og hvad skal jeg gøre?",
+                "A performance recording was cut short because the PC or PC Doctor stopped. Read it with performance_recording and check system_events around the time it ends. What happened and what should I do?",
+                "En prestandainspelning avbröts eftersom datorn eller PC Doctor stannade. Läs den med performance_recording och kontrollera system_events kring tiden då den slutar. Vad hände och vad ska jag göra?",
+                "Et ytelsesopptak ble avbrutt fordi PC-en eller PC Doctor stoppet. Les det med performance_recording og sjekk system_events rundt tidspunktet det slutter. Hva skjedde, og hva bør jeg gjøre?",
+                "Eine Leistungsaufzeichnung wurde abgebrochen, weil der PC oder PC Doctor aufgehört hat. Lies sie mit performance_recording und prüfe system_events um den Zeitpunkt, an dem sie endet. Was ist passiert und was soll ich tun?");
+
+        var last = incidents[^1];
+        int n = incidents.Count;
+        string when = last.Start.ToString("dd-MM HH:mm", CultureInfo.InvariantCulture);
+        string summary = last.Summary;
+        return L.T($"Windows har logget {n} hardware- eller grafikdriver-hang, senest {when} ({summary}). Undersøg hvad der skete: se system_events omkring det tidspunkt, system_hardware (grafikkort og driverversion) og en eventuel ydelsesoptagelse (performance_recording). Forklar enkelt, hvad den sandsynlige årsag er, og hvad jeg skal gøre.",
+                $"Windows has logged {n} hardware or graphics driver hang(s), the latest at {when} ({summary}). Find out what happened: read system_events around that time, system_hardware (graphics card and driver version) and any performance recording (performance_recording). Explain simply what the likely cause is and what I should do.",
+                $"Windows har loggat {n} hårdvaru- eller grafikdrivrutinshängning(ar), senast {when} ({summary}). Ta reda på vad som hände: läs system_events kring den tiden, system_hardware (grafikkort och drivrutinsversion) och en eventuell prestandainspelning (performance_recording). Förklara enkelt vad den troliga orsaken är och vad jag ska göra.",
+                $"Windows har logget {n} maskinvare- eller skjermdriver-henging(er), siste {when} ({summary}). Finn ut hva som skjedde: les system_events rundt det tidspunktet, system_hardware (skjermkort og driverversjon) og et eventuelt ytelsesopptak (performance_recording). Forklar enkelt hva den sannsynlige årsaken er og hva jeg bør gjøre.",
+                $"Windows hat {n} Hardware- oder Grafiktreiber-Hänger protokolliert, zuletzt {when} ({summary}). Finde heraus, was passiert ist: lies system_events um diesen Zeitpunkt, system_hardware (Grafikkarte und Treiberversion) und eine eventuelle Leistungsaufzeichnung (performance_recording). Erkläre einfach, was die wahrscheinliche Ursache ist und was ich tun soll.")
+            + recorded;
+    }
+
+    /// <summary>Hides the notice and remembers that everything up to now has been seen, so it does not come back at the next start.</summary>
+    void DismissFaults()
+    {
+        FaultBanner.IsVisible = false;
+        _settings.LastFaultSeen = DateTimeOffset.Now;
+        try { Services.SaveSettings(_settings); } catch (IOException) { /* the notice may show once more at the next start */ }
     }
 
     /// <summary>Quietly looks for a newer version when the app starts; a window only appears if there is one.</summary>

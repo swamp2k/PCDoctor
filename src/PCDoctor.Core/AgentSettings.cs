@@ -20,4 +20,10 @@ public sealed class AgentSettings
 
     /// <summary>Max tokens per model reply.</summary>
     public int MaxTokens { get; set; } = 16_000;
+
+    /// <summary>
+    /// Time of the newest graphics-card / hardware hang the user has already been told about at startup.
+    /// Null until the first notice; the first check then looks back 48 hours.
+    /// </summary>
+    public DateTimeOffset? LastFaultSeen { get; set; }
 }

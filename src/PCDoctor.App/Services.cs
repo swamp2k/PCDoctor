@@ -40,6 +40,22 @@ static class Services
         return tools;
     }
 
+    /// <summary>
+    /// Graphics card / hardware hangs Windows logged since <paramref name="since"/>, one entry per incident, oldest first.
+    /// Empty on other systems and when the log cannot be read: this is a courtesy check at startup and must never get in the way.
+    /// </summary>
+    public static List<FaultIncident> FindFaultIncidents(DateTimeOffset since)
+    {
+        if (!OperatingSystem.IsWindows())
+            return [];
+        try
+        {
+            var (events, _) = HardwareFaultReader.Read(since, DateTimeOffset.Now, CancellationToken.None);
+            return FaultIncidents.Cluster(events).Where(i => i.End > since).ToList();
+        }
+        catch (Exception) { return []; }
+    }
+
     /// <summary>Performance recording reads Windows counters, or /proc and /sys on Linux. Other systems have no sampler.</summary>
     public static IPerfSampler? CreatePerfSampler() =>
         OperatingSystem.IsWindows() ? new WindowsPerfSampler()

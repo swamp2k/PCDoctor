@@ -184,6 +184,9 @@ public sealed class OtherGameLogsTests : IDisposable
         try { Directory.Delete(_root, true); } catch (IOException) { }
     }
 
+    // Nothing from the real PC: without these, the locator also reads the machine's own crash reports and Xbox game folders.
+    OtherGamesLocator Isolated() => new(Local, LocalLow, Path.Combine(_root, "pd"), []);
+
     string Copy(string fixture, string to, int hoursAgo)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(to)!);
@@ -201,7 +204,7 @@ public sealed class OtherGameLogsTests : IDisposable
         Directory.CreateDirectory(Path.Combine(Local, "Google", "Chrome")); // not a game
         File.WriteAllText(Path.Combine(_root, "secret.txt"), "private");
 
-        var tool = new OtherGameLogsTool(new OtherGamesLocator(Local, LocalLow));
+        var tool = new OtherGameLogsTool(Isolated());
         var r = await tool.RunAsync(Json.Parse("{}"), CancellationToken.None);
         var root = JsonDocument.Parse(r.Content).RootElement;
 
@@ -250,7 +253,7 @@ public sealed class OtherGameLogsTests : IDisposable
     [Fact]
     public async Task No_games_gives_a_plain_note()
     {
-        var r = await new OtherGameLogsTool(new OtherGamesLocator(Local, LocalLow)).RunAsync(Json.Parse("{}"), CancellationToken.None);
+        var r = await new OtherGameLogsTool(Isolated()).RunAsync(Json.Parse("{}"), CancellationToken.None);
         Assert.False(r.IsError);
         Assert.Contains("No logs", r.Content);
     }

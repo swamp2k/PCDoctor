@@ -232,10 +232,27 @@ public partial class RecordingPage : UserControl
         _stop = new CancellationTokenSource();
         var ct = _stop.Token;
         var recorder = new PerfRecorder(_sampler);
+        // Every sample is also written to disk as it is taken, so a freeze or restart does not lose the recording.
+        PerfJournal? journal = null;
+        try
+        {
+            journal = PerfJournal.Create(_store.Folder, new PerfRecording
+            {
+                Started = DateTimeOffset.Now,
+                IntervalSeconds = PerfRecorder.DefaultInterval.TotalSeconds,
+                Game = game?.DisplayName,
+                GameProcess = game?.ProcessName,
+            });
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* the recording still works, it just cannot be recovered after a crash */ }
         // Sampling and saving run off the UI thread, so a game in front does not slow them down.
         _recording = Task.Run(async () =>
         {
-            PerfRecording r = await recorder.RunAsync(s => Dispatcher.UIThread.Post(() => OnSample(s)), ct);
+            PerfRecording r = await recorder.RunAsync(s =>
+            {
+                journal?.Append(s);
+                Dispatcher.UIThread.Post(() => OnSample(s));
+            }, ct);
             if (game is not null)
             {
                 r.Game = game.DisplayName;
@@ -255,6 +272,8 @@ public partial class RecordingPage : UserControl
                     _store.Save(r);
             }
             catch (Exception e) { saveError = e.Message; }
+            // Saved (or nothing to save): the journal is done. If saving failed it stays, so the next start can recover it.
+            if (saveError is null) journal?.Complete(); else journal?.Dispose();
             Dispatcher.UIThread.Post(() => OnFinished(r, saveError));
         });
     }
@@ -426,15 +445,24 @@ public partial class RecordingPage : UserControl
                 b.AppendLine(L.T("Spillet kørte ikke under optagelsen.", "The game was not running during the recording.", "Spelet körde inte under inspelningen.",
                     "Spillet kjørte ikke under opptaket.", "Das Spiel lief während der Aufzeichnung nicht."));
         }
-        bool limit = r.StopReason == "limit";
         string length = Time(s.DurationSeconds);
         int n = s.SampleCount;
+        string how = r.StopReason switch
+        {
+            "limit" => L.T("ved 15-minutters grænsen", "at the 15-minute limit", "vid 15-minutersgränsen", "ved 15-minuttersgrensen", "beim 15-Minuten-Limit"),
+            "interrupted" => L.T("uden at du trykkede Stop: PC'en eller PC Doctor holdt op undervejs (nedbrud, frys eller genstart); optagelsen er gendannet",
+                "without you pressing Stop: the PC or PC Doctor stopped partway (crash, freeze or restart); the recording was recovered",
+                "utan att du tryckte Stopp: datorn eller PC Doctor slutade mitt i (krasch, frysning eller omstart); inspelningen är återställd",
+                "uten at du trykket Stopp: PC-en eller PC Doctor sluttet underveis (krasj, frys eller omstart); opptaket er gjenopprettet",
+                "ohne dass du Stopp gedrückt hast: der PC oder PC Doctor hat zwischendurch aufgehört (Absturz, Einfrieren oder Neustart); die Aufzeichnung wurde wiederhergestellt"),
+            _ => L.T("af dig", "by you", "av dig", "av deg", "von dir"),
+        };
         b.AppendLine(L.T(
-            $"Varighed {length} ({n} målinger), stoppet {(limit ? "ved 15-minutters grænsen" : "af dig")}.",
-            $"Duration {length} ({n} samples), stopped {(limit ? "at the 15-minute limit" : "by you")}.",
-            $"Längd {length} ({n} mätningar), stoppad {(limit ? "vid 15-minutersgränsen" : "av dig")}.",
-            $"Varighet {length} ({n} målinger), stoppet {(limit ? "ved 15-minuttersgrensen" : "av deg")}.",
-            $"Dauer {length} ({n} Messungen), gestoppt {(limit ? "beim 15-Minuten-Limit" : "von dir")}."));
+            $"Varighed {length} ({n} målinger), stoppet {how}.",
+            $"Duration {length} ({n} samples), stopped {how}.",
+            $"Längd {length} ({n} mätningar), stoppad {how}.",
+            $"Varighet {length} ({n} målinger), stoppet {how}.",
+            $"Dauer {length} ({n} Messungen), gestoppt {how}."));
         b.AppendLine(Line("CPU ", s.Cpu));
         b.AppendLine(Line("GPU ", s.Gpu));
         string ramUsed = $"{s.MaxRamUsedGb:0.0}";
@@ -458,6 +486,8 @@ public partial class RecordingPage : UserControl
         if (s.MaxGpuMemoryGb is { } vram)
             b.AppendLine(L.T("Grafikhukommelse (VRAM)", "Graphics memory (VRAM)", "Grafikminne (VRAM)", "Grafikkminne (VRAM)", "Grafikspeicher (VRAM)") +
                          $": {atMost} {vram:0.0} GB " + L.T("i brug", "in use", "använt", "i bruk", "belegt"));
+        if (s.GpuHealth is { } gpuHealth)
+            b.AppendLine(GpuHealthText(gpuHealth));
         if (s.Ping is { } ping)
         {
             string a = $"{ping.AverageMs:0}", max = $"{ping.MaxMs:0}", lost = $"{ping.LostPercent:0.#}";
@@ -479,6 +509,36 @@ public partial class RecordingPage : UserControl
                              "Meiste Grafikkarte: ") +
                          string.Join(", ", gpu.Select(p => $"{p.Name} ({OfTheTime(p.PercentOfTime)})")));
         return b.ToString().TrimEnd();
+    }
+
+    /// <summary>One line about the graphics card's temperature, power, clock speed and limits.</summary>
+    static string GpuHealthText(GpuHealthSummary g)
+    {
+        var parts = new List<string>();
+        if (g.MaxTempC is { } t)
+            parts.Add(L.T($"højst {t:0} °C", $"at most {t:0} °C", $"som mest {t:0} °C", $"maks {t:0} °C", $"höchstens {t:0} °C"));
+        if (g.MaxPowerW is { } p)
+            parts.Add(L.T($"højst {p:0} W", $"at most {p:0} W", $"som mest {p:0} W", $"maks {p:0} W", $"höchstens {p:0} W"));
+        if (g.MaxClockMhz is { } hi)
+        {
+            string lo = g.MinClockMhzWhileBusy is { } m ? $"{m:0}" : "–";
+            parts.Add(L.T($"hastighed {lo}–{hi:0} MHz (laveste under belastning til højeste)", $"clock {lo}–{hi:0} MHz (lowest while busy to highest)",
+                $"hastighet {lo}–{hi:0} MHz (lägsta under belastning till högsta)", $"hastighet {lo}–{hi:0} MHz (laveste under belastning til høyeste)",
+                $"Takt {lo}–{hi:0} MHz (niedrigste unter Last bis höchste)"));
+        }
+        string text = L.T("Grafikkort", "Graphics card", "Grafikkort", "Skjermkort", "Grafikkarte") + ": " + string.Join("; ", parts) + ".";
+        if (g.ThrottleReasons.Count > 0)
+        {
+            string list = string.Join(", ", g.ThrottleReasons);
+            text += " " + L.T($"Holdt tilbage af: {list}.", $"Held back by: {list}.", $"Hölls tillbaka av: {list}.", $"Holdt tilbake av: {list}.", $"Ausgebremst durch: {list}.");
+        }
+        if (g.SlowestReplyMs is >= 2000 and var slow)
+            text += " " + L.T($"Driveren var længe om at svare (op til {slow / 1000.0:0.0} sek.): grafikkortet eller driveren hang måske.",
+                $"The driver was slow to answer (up to {slow / 1000.0:0.0} s): the graphics card or driver may have hung.",
+                $"Drivrutinen var långsam att svara (upp till {slow / 1000.0:0.0} s): grafikkortet eller drivrutinen kan ha hängt sig.",
+                $"Driveren brukte lang tid på å svare (opptil {slow / 1000.0:0.0} sek.): skjermkortet eller driveren kan ha hengt seg.",
+                $"Der Treiber antwortete langsam (bis zu {slow / 1000.0:0.0} s): die Grafikkarte oder der Treiber hing möglicherweise.");
+        return text;
     }
 
     static string OfTheTime(double percent)

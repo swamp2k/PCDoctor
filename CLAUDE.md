@@ -17,7 +17,7 @@ AGENTS.md and CLAUDE.md in the repository root must always have identical conten
 
 - Never push straight to `main`. Work on a branch and open a pull request.
 - Every push and pull request runs `.github/workflows/build.yml` (tests and builds on Windows and Linux).
-- Every merge to `main` publishes a new GitHub Release automatically (version 1.0.<commit count>), and the app offers it to users through its "Update now" button. So a merge is effectively a release to the family's PCs.
+- Every merge to `main` publishes a new GitHub Release automatically (version 1.0.<commit count>), and the app offers it through its "Update now" button. PC Doctor is not rolled out to the family's PCs by that: only PCWatch is.
 
 ## Code facts worth knowing
 

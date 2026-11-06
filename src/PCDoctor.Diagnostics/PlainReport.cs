@@ -220,7 +220,9 @@ public static class PlainReport
             b.AppendLine();
             string when = DateTime.TryParse(Str(g, "last"), CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) ? t.ToString("dd-MM HH:mm", CultureInfo.InvariantCulture) : Str(g, "last");
             string count = Num(g, "count") is > 1 and var c ? $"  ×{c:0}" : "";
-            string level = Str(g, "level") == "critical" ? L.T("KRITISK ", "CRITICAL ", "KRITISK ", "KRITISK ", "KRITISCH ") : "";
+            string level = Str(g, "level") == "critical" ? L.T("KRITISK ", "CRITICAL ", "KRITISK ", "KRITISK ", "KRITISCH ")
+                : Bool(g, "hardware_fault") ? L.T("HARDWARE/DRIVER ", "HARDWARE/DRIVER ", "HÅRDVARA/DRIVRUTIN ", "MASKINVARE/DRIVER ", "HARDWARE/TREIBER ")
+                : "";
             b.AppendLine($"{(level.Length > 0 ? Problem : Notice)} {when}  {level}{Str(g, "source")}{(Str(g, "event_id") is "0" or "" ? "" : $" ({Str(g, "event_id")})")}{count}");
             if (Str(g, "meaning") is { Length: > 0 } meaning)
                 b.AppendLine($"   {meaning}");

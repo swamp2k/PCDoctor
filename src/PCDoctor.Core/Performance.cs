@@ -16,6 +16,11 @@ namespace PCDoctor.Core;
 /// <param name="GameGpu">Graphics card used by the chosen game, % (game recordings only).</param>
 /// <param name="GameRamGb">RAM used by the chosen game, GB (game recordings only).</param>
 /// <param name="NetMbps">Network traffic in and out of this PC, megabits per second; null on the first reading or when Windows has no counter.</param>
+/// <param name="GpuTempC">Graphics card temperature (NVIDIA only; null on other cards).</param>
+/// <param name="GpuPowerW">Graphics card power draw in watts.</param>
+/// <param name="GpuClockMhz">Graphics card core clock. Falling while the card is busy points at power, heat or a driver problem.</param>
+/// <param name="GpuThrottle">Comma-separated limits holding the graphics card back (see <see cref="GpuThrottle"/>), or null.</param>
+/// <param name="GpuQueryMs">How long the graphics driver took to answer the health reading. Seconds means the driver was struggling.</param>
 public sealed record PerfSample(
     double Seconds,
     double Cpu,
@@ -33,7 +38,12 @@ public sealed record PerfSample(
     double? GameCpu = null,
     double? GameGpu = null,
     double? GameRamGb = null,
-    double? NetMbps = null);
+    double? NetMbps = null,
+    double? GpuTempC = null,
+    double? GpuPowerW = null,
+    double? GpuClockMhz = null,
+    string? GpuThrottle = null,
+    int? GpuQueryMs = null);
 
 /// <summary>Takes one measurement of the whole machine. The Windows version lives in Platform.Windows.</summary>
 public interface IPerfSampler
@@ -54,7 +64,10 @@ public sealed class PerfRecording
     public DateTimeOffset Started { get; set; }
     public double IntervalSeconds { get; set; }
 
-    /// <summary>"user" (Stop pressed) or "limit" (reached the 15-minute cap).</summary>
+    /// <summary>
+    /// "user" (Stop pressed), "limit" (reached the 15-minute cap) or "interrupted" (the PC or PC Doctor stopped
+    /// before Stop was pressed: crash, freeze, restart or power loss; rebuilt from the journal).
+    /// </summary>
     public string StopReason { get; set; } = "user";
 
     public List<PerfSample> Samples { get; set; } = [];
@@ -156,7 +169,8 @@ public sealed record PerfSummary(
     PingSummary? Ping = null,
     MetricSummary? GameCpu = null,
     MetricSummary? GameGpu = null,
-    double? MaxGameRamGb = null)
+    double? MaxGameRamGb = null,
+    GpuHealthSummary? GpuHealth = null)
 {
     public static PerfSummary From(PerfRecording r)
     {
@@ -189,7 +203,8 @@ public sealed record PerfSummary(
             PingOf(s),
             Summarise(s.Select(x => x.GameCpu)),
             Summarise(s.Select(x => x.GameGpu)),
-            s.Any(x => x.GameRamGb is not null) ? Math.Round(s.Max(x => x.GameRamGb ?? 0), 1) : null);
+            s.Any(x => x.GameRamGb is not null) ? Math.Round(s.Max(x => x.GameRamGb ?? 0), 1) : null,
+            GpuHealthSummary.From(s));
     }
 
     static CpuSpeedSummary? SpeedOf(List<PerfSample> s)
@@ -254,6 +269,34 @@ public sealed class PerfRecordingStore
             try { File.Delete(Path.Combine(_dir, old)); } catch (IOException) { }
         }
         return id;
+    }
+
+    /// <summary>
+    /// Turns journals left behind by a crash, freeze or restart into normal recordings (stopped_by "interrupted").
+    /// Journals of a recording running right now are left alone. Returns the ids of the recovered recordings.
+    /// </summary>
+    public IReadOnlyList<string> RecoverInterrupted()
+    {
+        var recovered = new List<string>();
+        if (!Directory.Exists(_dir))
+            return recovered;
+        foreach (string file in Directory.GetFiles(_dir, "rec-*.partial"))
+        {
+            if (PerfJournal.IsActive(file))
+                continue;
+            try
+            {
+                PerfRecording? r = PerfJournal.Read(file);
+                if (r is { Samples.Count: > 0 })
+                {
+                    r.StopReason = "interrupted";
+                    recovered.Add(Save(r));
+                }
+                File.Delete(file);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* try again at the next start */ }
+        }
+        return recovered;
     }
 
     /// <summary>Recording ids, newest first.</summary>

@@ -228,3 +228,19 @@ public sealed class RaceScoreTests
     public void Network_lag_score_runs_from_0_to_100(double? ping, bool lost, double expected) =>
         Assert.Equal(expected, RaceScore.NetworkLag(ping, lost), 6);
 }
+
+public class PerfCsvTests
+{
+    [Fact]
+    public void Csv_has_header_one_row_per_sample_and_quotes_awkward_names()
+    {
+        var r = new PerfRecording { Started = DateTimeOffset.Now };
+        r.Samples.Add(new PerfSample(1, 50.5, null, 40, 6.2, 3, "my;game \"x\"", 12));
+        var csv = PerfCsv.Build(r, System.Globalization.CultureInfo.GetCultureInfo("da-DK"));
+        var lines = csv.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, lines.Length);
+        Assert.StartsWith("Seconds;CPU %;GPU %", lines[0]);
+        Assert.StartsWith("1;50,5;;40;6,2;3;\"my;game \"\"x\"\"\";12", lines[1]);
+        Assert.EndsWith(".csv", PerfCsv.FileName(r));
+    }
+}

@@ -42,11 +42,12 @@
         </Grid>
 
         <!-- Bottom: earlier recordings, details, and ask -->
-        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,12,0,0">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto,8,Auto" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Classes="muted" Text="{app:Tr Optagelser, Recordings, Inspelningar, Opptak, Aufzeichnungen}" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox Grid.Column="1" x:Name="RecordingBox" Width="210"/>
             <Button Grid.Column="2" x:Name="LiveButton" Content="{app:Tr Tilbage til live, Back to live, Tillbaka till live, Tilbake til live, Zurück zu live}" Margin="8,0,0,0" IsVisible="False"/>
-            <Button Grid.Column="3" x:Name="AskButton" Classes="accent" Content="{app:Tr Spørg PC Doctor om optagelsen, Ask PC Doctor about the recording, Fråga PC Doctor om inspelningen, Spør PC Doctor om opptaket, PC Doctor zur Aufzeichnung fragen}" IsEnabled="False"/>
+            <Button Grid.Column="3" x:Name="ExportButton" Content="{app:Tr Eksportér, Export, Exportera, Eksporter, Exportieren}" ToolTip.Tip="{app:Tr Gem optagelsen som en CSV-fil (åbner i Excel), Save the recording as a CSV file (opens in Excel), Spara inspelningen som en CSV-fil (öppnas i Excel), Lagre opptaket som en CSV-fil (åpnes i Excel), Aufzeichnung als CSV-Datei speichern (öffnet in Excel)}" IsEnabled="False"/>
+            <Button Grid.Column="5" x:Name="AskButton" Classes="accent" Content="{app:Tr Spørg PC Doctor om optagelsen, Ask PC Doctor about the recording, Fråga PC Doctor om inspelningen, Spør PC Doctor om opptaket, PC Doctor zur Aufzeichnung fragen}" IsEnabled="False"/>
         </Grid>
         <Expander DockPanel.Dock="Bottom" Header="{app:Tr Alle detaljer, All details, Alla detaljer, Alle detaljer, Alle Details}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
             <ScrollViewer MaxHeight="180">

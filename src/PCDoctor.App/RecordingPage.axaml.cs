@@ -124,7 +124,7 @@ public partial class RecordingPage : UserControl
         FpsCard.IsVisible = false;
         LiveLabels();
         LiveButton.IsVisible = false;
-        AskButton.IsEnabled = false;
+        AskButton.IsEnabled = ExportButton.IsEnabled = false;
         if (_live.Count > 0)
             ShowSample(_live[^1]);
     }
@@ -185,6 +185,7 @@ public partial class RecordingPage : UserControl
         StartButton.Click += async (_, _) => await StartAsync();
         StopButton.Click += (_, _) => _stop?.Cancel();
         AskButton.Click += (_, _) => Ask();
+        ExportButton.Click += async (_, _) => await ExportAsync();
         RecordingBox.SelectionChanged += (_, _) =>
         {
             if (!_filling && RecordingBox.SelectedItem is Entry e && _store.Load(e.Id) is { } r)
@@ -442,7 +443,7 @@ public partial class RecordingPage : UserControl
         RecordingBox.IsEnabled = !on;
         GameBox.IsEnabled = RefreshGamesButton.IsEnabled = !on;
         FpsBox.IsEnabled = !on && OperatingSystem.IsWindows() && SelectedGame is not null;
-        AskButton.IsEnabled = !on && _shown is not null;
+        AskButton.IsEnabled = ExportButton.IsEnabled = !on && _shown is not null;
     }
 
     void FillList(string? select)
@@ -460,7 +461,7 @@ public partial class RecordingPage : UserControl
         Chart.Samples = r.Samples;
         NetGraph.Samples = r.Samples;
         SummaryText.Text = Describe(r);
-        AskButton.IsEnabled = _recording is null;
+        AskButton.IsEnabled = ExportButton.IsEnabled = _recording is null;
 
         // Averages, coloured by how much of the time each part was close to 100 %.
         var s = PerfSummary.From(r);
@@ -503,6 +504,35 @@ public partial class RecordingPage : UserControl
             FpsDetail.Text = L.T("Ikke målt", "Not measured", "Inte mätt", "Ikke målt", "Nicht gemessen");
             ToolTip.SetTip(FpsCard, nf.Problem);
             FpsDot.Fill = Status.Of(Light.None);
+        }
+    }
+
+    /// <summary>Saves the recording on screen as a CSV file the user picks a place for.</summary>
+    async Task ExportAsync()
+    {
+        if (_shown is not { } r || TopLevel.GetTopLevel(this) is not { } top)
+            return;
+        try
+        {
+            var file = await top.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+            {
+                Title = L.T("Eksportér optagelsen", "Export the recording", "Exportera inspelningen", "Eksporter opptaket", "Aufzeichnung exportieren"),
+                SuggestedFileName = PerfCsv.FileName(r),
+                DefaultExtension = "csv",
+                FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType("CSV") { Patterns = ["*.csv"] }],
+            });
+            if (file is null)
+                return;
+            // A byte order mark makes Excel read æ, ø and å correctly.
+            await using var stream = await file.OpenWriteAsync();
+            stream.SetLength(0);
+            await using var writer = new StreamWriter(stream, new UTF8Encoding(true));
+            await writer.WriteAsync(PerfCsv.Build(r));
+            ElapsedText.Text = L.T("Eksporteret.", "Exported.", "Exporterad.", "Eksportert.", "Exportiert.");
+        }
+        catch (Exception e)
+        {
+            ElapsedText.Text = L.T("Kunne ikke eksportere: ", "Could not export: ", "Kunde inte exportera: ", "Kunne ikke eksportere: ", "Export nicht möglich: ") + e.Message;
         }
     }
 

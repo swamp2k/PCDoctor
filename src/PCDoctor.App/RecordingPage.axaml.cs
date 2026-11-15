@@ -45,6 +45,90 @@ public partial class RecordingPage : UserControl
         timer.Start();
     }
 
+    // Live View: always-on readings while the page is on screen. Recording pauses this loop and takes over.
+    CancellationTokenSource? _liveStop;
+    Task? _liveLoop;
+    volatile bool _onScreen = true;
+    volatile string? _liveGame;
+    const int LiveWindow = 300; // seconds of history kept in the live graphs
+
+    void StartLive()
+    {
+        if (!_gameMode || _sampler is null || _liveLoop is not null)
+            return;
+        _live.Clear();
+        Chart.Samples = _live;
+        NetGraph.Samples = _live;
+        ShowNetwork(null);
+        Race.Reset();
+        _liveStop = new CancellationTokenSource();
+        var ct = _liveStop.Token;
+        var sampler = _sampler;
+        _liveLoop = Task.Run(async () =>
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            try { sampler.Read(); } catch (Exception) { /* first reading only primes the counters */ }
+            try
+            {
+                using var timer = new PeriodicTimer(PerfRecorder.DefaultInterval);
+                while (await timer.WaitForNextTickAsync(ct))
+                {
+                    if (!_onScreen)
+                        continue;
+                    try
+                    {
+                        sampler.Game = _liveGame;
+                        var s = sampler.Read() with { Seconds = Math.Round(clock.Elapsed.TotalSeconds, 1) };
+                        Dispatcher.UIThread.Post(() => OnLiveSample(s));
+                    }
+                    catch (Exception) { /* one failed reading must not end the live view */ }
+                }
+            }
+            catch (OperationCanceledException) { }
+        });
+    }
+
+    async Task StopLiveAsync()
+    {
+        if (_liveLoop is null)
+            return;
+        _liveStop?.Cancel();
+        try { await _liveLoop; } catch (Exception) { }
+        _liveStop?.Dispose();
+        (_liveStop, _liveLoop) = (null, null);
+    }
+
+    void OnLiveSample(PerfSample s)
+    {
+        if (_liveLoop is null || _recording is not null)
+            return;
+        _live.Add(s);
+        while (_live.Count > LiveWindow)
+            _live.RemoveAt(0);
+        if (_shown is not null)
+            return; // an old recording is on screen; keep collecting quietly
+        ShowSample(s);
+        ElapsedText.Text = L.T("● Live", "● Live", "● Live", "● Live", "● Live");
+    }
+
+    /// <summary>Leaves an old recording and goes back to the live readings.</summary>
+    void BackToLive()
+    {
+        _shown = null;
+        _filling = true;
+        RecordingBox.SelectedItem = null;
+        _filling = false;
+        Chart.Samples = _live;
+        NetGraph.Samples = _live;
+        SummaryText.Text = "";
+        FpsCard.IsVisible = false;
+        LiveLabels();
+        LiveButton.IsVisible = false;
+        AskButton.IsEnabled = false;
+        if (_live.Count > 0)
+            ShowSample(_live[^1]);
+    }
+
     CancellationTokenSource? _stop;
     Task? _recording;
     PerfRecording? _shown;
@@ -78,6 +162,12 @@ public partial class RecordingPage : UserControl
             GraphsButton.Click += (_, _) => ShowRace(false);
             ShowNetwork(null);
             StartProgramList();
+            LiveButton.Click += (_, _) => BackToLive();
+            PropertyChanged += (_, e) =>
+            {
+                if (e.Property == IsVisibleProperty)
+                    _onScreen = IsVisible;
+            };
         }
         else
             Race.IsVisible = false;
@@ -86,7 +176,11 @@ public partial class RecordingPage : UserControl
         FpsBox.IsEnabled = OperatingSystem.IsWindows();
         RefreshGames();
         RefreshGamesButton.Click += (_, _) => RefreshGames();
-        GameBox.SelectionChanged += (_, _) => FpsBox.IsEnabled = OperatingSystem.IsWindows() && SelectedGame is not null;
+        GameBox.SelectionChanged += (_, _) =>
+        {
+            FpsBox.IsEnabled = OperatingSystem.IsWindows() && SelectedGame is not null;
+            _liveGame = SelectedGame?.ProcessName;
+        };
 
         StartButton.Click += async (_, _) => await StartAsync();
         StopButton.Click += (_, _) => _stop?.Cancel();
@@ -94,7 +188,10 @@ public partial class RecordingPage : UserControl
         RecordingBox.SelectionChanged += (_, _) =>
         {
             if (!_filling && RecordingBox.SelectedItem is Entry e && _store.Load(e.Id) is { } r)
+            {
                 Display(r);
+                LiveButton.IsVisible = _gameMode && _sampler is not null;
+            }
         };
 
         if (_sampler is null)
@@ -103,6 +200,7 @@ public partial class RecordingPage : UserControl
             ShowOnlyOnWindows();
         }
         FillList(select: null);
+        StartLive();
 
         // A new language: the texts set from code are set again, and a recording shown is described again.
         L.Changed += () =>
@@ -160,16 +258,16 @@ public partial class RecordingPage : UserControl
             ? "Live View"
             : L.T("Optag ydelse", "Record performance", "Spela in prestanda", "Ta opp ytelse", "Leistung aufzeichnen");
         IntroText.Text = _gameMode
-            ? L.T("Her kan du se, hvad PC'en bruger kræfterne på lige nu, og hvilke programmer der kører. Vil du optage, så tryk Start (vælg gerne et program, fx et spil, for at følge det), og tryk Stop bagefter.",
-                  "See what the PC is spending its power on right now, and which programs are running. To record, press Start (you can pick a program, such as a game, to follow it) and press Stop afterwards.",
-                  "Här ser du vad datorn lägger kraften på just nu och vilka program som körs. Vill du spela in, tryck Starta (välj gärna ett program, t.ex. ett spel, att följa) och tryck Stopp efteråt.",
-                  "Her ser du hva PC-en bruker kreftene på akkurat nå, og hvilke programmer som kjører. Vil du ta opp, trykk Start (velg gjerne et program, f.eks. et spill, å følge) og trykk Stopp etterpå.",
-                  "Hier siehst du, wofür der PC gerade seine Leistung verwendet und welche Programme laufen. Zum Aufzeichnen drücke Start (wähle gern ein Programm, z. B. ein Spiel, zum Verfolgen) und danach Stopp.")
-            : L.T("Tryk Start, brug PC'en som normalt, og tryk Stop. Stopper selv efter 15 minutter.",
-                  "Press Start, use the PC as usual, and press Stop. Stops by itself after 15 minutes.",
-                  "Tryck Starta, använd datorn som vanligt och tryck Stopp. Stannar av sig själv efter 15 minuter.",
-                  "Trykk Start, bruk PC-en som vanlig, og trykk Stopp. Stopper av seg selv etter 15 minutter.",
-                  "Drücke Start, benutze den PC wie gewohnt und drücke Stopp. Stoppt nach 15 Minuten von selbst.");
+            ? L.T("Her kan du se, hvad PC'en bruger kræfterne på lige nu, og hvilke programmer der kører. Vil du gemme det, så tryk Optag (vælg gerne et program, fx et spil, for at følge det), og tryk Stop bagefter.",
+                  "See what the PC is spending its power on right now, and which programs are running. To save it, press Record (you can pick a program, such as a game, to follow it) and press Stop afterwards.",
+                  "Här ser du vad datorn lägger kraften på just nu och vilka program som körs. Vill du spara det, tryck Spela in (välj gärna ett program, t.ex. ett spel, att följa) och tryck Stopp efteråt.",
+                  "Her ser du hva PC-en bruker kreftene på akkurat nå, og hvilke programmer som kjører. Vil du lagre det, trykk Ta opp (velg gjerne et program, f.eks. et spill, å følge) og trykk Stopp etterpå.",
+                  "Hier siehst du, wofür der PC gerade seine Leistung verwendet und welche Programme laufen. Zum Speichern drücke Aufnehmen (wähle gern ein Programm, z. B. ein Spiel, zum Verfolgen) und danach Stopp.")
+            : L.T("Tryk Optag, brug PC'en som normalt, og tryk Stop. Stopper selv efter 15 minutter.",
+                  "Press Record, use the PC as usual, and press Stop. Stops by itself after 15 minutes.",
+                  "Tryck Spela in, använd datorn som vanligt och tryck Stopp. Stannar av sig själv efter 15 minuter.",
+                  "Trykk Ta opp, bruk PC-en som vanlig, og trykk Stopp. Stopper av seg selv etter 15 minutter.",
+                  "Drücke Aufnehmen, benutze den PC wie gewohnt und drücke Stopp. Stoppt nach 15 Minuten von selbst.");
     }
 
     static string GpuName => L.T("Grafikkort", "Graphics card", "Grafikkort", "Skjermkort", "Grafikkarte");
@@ -180,6 +278,7 @@ public partial class RecordingPage : UserControl
     /// <summary>Called when the app closes. Closing mid-recording keeps what was recorded so far.</summary>
     public void Shutdown()
     {
+        _liveStop?.Cancel();
         _stop?.Cancel();
         _recording?.Wait(TimeSpan.FromSeconds(3));
     }
@@ -203,7 +302,12 @@ public partial class RecordingPage : UserControl
             return;
 
         var game = SelectedGame;
+        StartButton.IsEnabled = false;
+        await StopLiveAsync(); // the live loop and the recording must not read at the same time
+        if (_recording is not null)
+            return;
         _sampler.Game = game?.ProcessName;
+        LiveButton.IsVisible = false;
 
         // FPS needs administrator rights, so it runs in a separate helper Windows asks permission for.
         Func<DateTimeOffset, Task<FpsResult>>? stopFps = null;
@@ -281,6 +385,13 @@ public partial class RecordingPage : UserControl
     void OnSample(PerfSample s)
     {
         _live.Add(s);
+        ShowSample(s);
+        ElapsedText.Text = $"{Recording} {Time(s.Seconds)} / {Max}";
+    }
+
+    /// <summary>Puts one reading on the gauges, race, graphs and network card.</summary>
+    void ShowSample(PerfSample s)
+    {
         Chart.InvalidateVisual();
         NetGraph.InvalidateVisual();
         ShowNetwork(s);
@@ -289,7 +400,6 @@ public partial class RecordingPage : UserControl
         GpuTile.Show(s.Gpu);
         RamTile.Show(s.Ram);
         DiskTile.Show(s.Disk);
-        ElapsedText.Text = $"{Recording} {Time(s.Seconds)} / {Max}";
     }
 
     string? PingText() =>
@@ -301,6 +411,7 @@ public partial class RecordingPage : UserControl
         _stop = null;
         _recording = null;
         SetRecording(false);
+        StartLive();
         if (r.Samples.Count == 0)
         {
             ElapsedText.Text = L.T("Intet optaget.", "Nothing recorded.", "Inget inspelat.", "Ingenting tatt opp.", "Nichts aufgezeichnet.");
@@ -312,6 +423,7 @@ public partial class RecordingPage : UserControl
             ElapsedText.Text = L.T("Kunne ikke gemme optagelsen: ", "Could not save the recording: ", "Kunde inte spara inspelningen: ",
                 "Kunne ikke lagre opptaket: ", "Die Aufzeichnung konnte nicht gespeichert werden: ") + saveError;
             Display(r);
+            LiveButton.IsVisible = _gameMode && _sampler is not null;
             return;
         }
         ElapsedText.Text = r.StopReason == "limit"
@@ -319,6 +431,7 @@ public partial class RecordingPage : UserControl
             : L.T("Optagelse gemt.", "Recording saved.", "Inspelningen sparad.", "Opptaket er lagret.", "Aufzeichnung gespeichert.");
         FillList(select: r.Id);
         Display(r);
+        LiveButton.IsVisible = _gameMode && _sampler is not null;
         // The analysis only starts when the user asks for it themselves.
     }
 

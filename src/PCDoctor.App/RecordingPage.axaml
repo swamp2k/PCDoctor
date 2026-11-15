@@ -16,7 +16,7 @@
             <Button Grid.Column="4" x:Name="StartButton" Classes="record" MinWidth="100">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Ellipse Width="10" Height="10" Fill="White" VerticalAlignment="Center"/>
-                    <TextBlock Text="{app:Tr Start, Start, Starta, Start, Start}"/>
+                    <TextBlock Text="{app:Tr Optag, Record, Spela in, Ta opp, Aufnehmen}"/>
                 </StackPanel>
             </Button>
             <Button Grid.Column="5" x:Name="StopButton" Content="{app:Tr Stop, Stop, Stopp, Stopp, Stopp}" MinWidth="80" Margin="8,0,0,0" IsEnabled="False"/>
@@ -45,6 +45,7 @@
         <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Classes="muted" Text="{app:Tr Optagelser, Recordings, Inspelningar, Opptak, Aufzeichnungen}" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <ComboBox Grid.Column="1" x:Name="RecordingBox" Width="210"/>
+            <Button Grid.Column="2" x:Name="LiveButton" Content="{app:Tr Tilbage til live, Back to live, Tillbaka till live, Tilbake til live, Zurück zu live}" Margin="8,0,0,0" IsVisible="False"/>
             <Button Grid.Column="3" x:Name="AskButton" Classes="accent" Content="{app:Tr Spørg PC Doctor om optagelsen, Ask PC Doctor about the recording, Fråga PC Doctor om inspelningen, Spør PC Doctor om opptaket, PC Doctor zur Aufzeichnung fragen}" IsEnabled="False"/>
         </Grid>
         <Expander DockPanel.Dock="Bottom" Header="{app:Tr Alle detaljer, All details, Alla detaljer, Alle detaljer, Alle Details}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
